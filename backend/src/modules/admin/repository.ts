@@ -1,4 +1,6 @@
 import type { Pool, PoolConnection, ResultSetHeader, RowDataPacket } from 'mysql2/promise';
+import { nextExplicitId, transaction } from '../../config/mysql-transaction.js';
+import { AdminError } from './error.js';
 import type { z } from 'zod';
 import type { list, schemas } from './schemas.js';
 
@@ -22,9 +24,7 @@ const resources = {
   'formas-pagamento': { table: 'forma_pagamento', key: 'id_forma_pagamento', list: 't.id_forma_pagamento AS id,t.descricao,t.permite_troco,t.ativo', from: 'forma_pagamento t' },
 } as const;
 
-export class AdminError extends Error {
-  constructor(public status: number, public code: string, message: string) { super(message); }
-}
+export { AdminError } from './error.js';
 
 export function checkParent(tree: readonly { id_categoria: number; id_categoria_pai: number | null }[], id: number, parent: number) {
   const nodes = new Map(tree.map((row) => [row.id_categoria, row.id_categoria_pai]));
@@ -40,8 +40,30 @@ export function checkParent(tree: readonly { id_categoria: number; id_categoria_
   }
 }
 
-export function adminRepository(pool: Pool | undefined, resource: Resource) {
+export function adminRepository(pool: Pool | undefined, resource: Resource, official = false) {
   const spec = resources[resource];
+  const uniqueField = official && resource === 'cargos' ? 'nome'
+    : official && resource === 'formas-pagamento' ? 'descricao' : undefined;
+  const explicitId = official && resource === 'funcionarios';
+  const lock = explicitId || uniqueField ? 'sqlider:Supermercado:' + spec.table : undefined;
+
+  async function checkUnique(connection: PoolConnection, fields: Fields, id?: number) {
+    if (!uniqueField || !(uniqueField in fields)) return;
+    const [rows] = await connection.execute<RowDataPacket[]>(
+      `SELECT ${spec.key} FROM ${spec.table} WHERE ${uniqueField}=?` +
+      (id === undefined ? '' : ` AND ${spec.key}<>?`) + ' LIMIT 1',
+      id === undefined ? [fields[uniqueField]] : [fields[uniqueField], id]);
+    if (rows.length) throw new AdminError(409, 'DUPLICATE', 'Já existe um registro com esse valor em ' + uniqueField + '.');
+  }
+
+  async function insert(connection: Pool | PoolConnection, fields: Fields) {
+    // Colunas vêm dos schemas estritos e, no oficial, do alocador interno.
+    const columns = Object.keys(fields);
+    const [result] = await connection.execute<ResultSetHeader>(
+      `INSERT INTO ${spec.table} (${columns.join(',')}) VALUES (${columns.map(() => '?').join(',')})`,
+      Object.values(fields));
+    return result;
+  }
 
   function db() {
     if (!pool) throw new AdminError(503, 'DATABASE_UNAVAILABLE', 'Banco indisponível.');
@@ -101,17 +123,26 @@ export function adminRepository(pool: Pool | undefined, resource: Resource) {
       return { items: items.slice(0, filters.limite), pagina: filters.pagina, mais: items.length > filters.limite };
     },
     async create(fields: Fields) {
-      // As chaves provêm exclusivamente dos schemas estritos do servidor.
-      const columns = Object.keys(fields);
-      const [result] = await db().execute<ResultSetHeader>(
-        `INSERT INTO ${spec.table} (${columns.join(',')}) VALUES (${columns.map(() => '?').join(',')})`,
-        Object.values(fields));
-      return detail(result.insertId);
+      if (!lock) {
+        const result = await insert(db(), fields);
+        return detail(result.insertId);
+      }
+      return transaction(db(), async (connection) => {
+        await checkUnique(connection, fields);
+        if (explicitId) {
+          const [cargos] = await connection.execute<RowDataPacket[]>(
+            'SELECT id_cargo FROM cargo WHERE id_cargo=? FOR SHARE', [fields.id_cargo]);
+          if (!cargos.length) throw new AdminError(409, 'INVALID_REFERENCE', 'O cargo informado não existe.');
+          const id = await nextExplicitId(connection, spec.table, spec.key);
+          await insert(connection, { ...fields, [spec.key]: id });
+          return detail(id, connection);
+        }
+        const result = await insert(connection, fields);
+        return detail(result.insertId, connection);
+      }, lock);
     },
     async update(id: number, fields: Fields, validate: (current: RowDataPacket) => void) {
-      const connection = await db().getConnection();
-      try {
-        await connection.beginTransaction();
+      return transaction(db(), async (connection) => {
         if (resource === 'categorias' && typeof fields.id_categoria_pai === 'number') {
           const [tree] = await connection.execute<RowDataPacket[]>(
             'SELECT id_categoria, id_categoria_pai FROM categoria ORDER BY id_categoria FOR UPDATE');
@@ -122,6 +153,7 @@ export function adminRepository(pool: Pool | undefined, resource: Resource) {
         if (!locked.length) throw new AdminError(404, 'NOT_FOUND', 'Registro não encontrado.');
         const current = await detail(id, connection);
         validate(current);
+        await checkUnique(connection, fields, id);
         if (resource === 'caixas' && fields.ativo === false) {
           const [sessions] = await connection.execute<RowDataPacket[]>(
             'SELECT id_sessao FROM sessao_caixa WHERE id_caixa=? AND data_fechamento IS NULL LIMIT 1', [id]);
@@ -129,13 +161,8 @@ export function adminRepository(pool: Pool | undefined, resource: Resource) {
         }
         const set = Object.keys(fields).map((key) => key + '=?').join(',');
         await connection.execute(`UPDATE ${spec.table} SET ${set} WHERE ${spec.key}=?`, [...Object.values(fields), id]);
-        const updated = await detail(id, connection);
-        await connection.commit();
-        return updated;
-      } catch (error) {
-        await connection.rollback();
-        throw error;
-      } finally { connection.release(); }
+        return detail(id, connection);
+      }, uniqueField && uniqueField in fields ? lock : undefined);
     },
   };
 }

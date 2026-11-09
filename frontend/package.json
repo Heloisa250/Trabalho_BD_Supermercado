@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:official": "vite --mode official --host 127.0.0.1",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview"
   },

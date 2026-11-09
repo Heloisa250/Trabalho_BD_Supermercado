@@ -5,6 +5,7 @@ import { AuthDatabaseError, type AuthService } from '../auth/service.js';
 import { adminController } from './controller.js';
 import { adminRepository, AdminError, type Resource } from './repository.js';
 import { purchaseRoutes } from '../purchases/routes.js';
+import { MysqlIdLimit, MysqlLockTimeout } from '../../config/mysql-transaction.js';
 import { mountProductSuppliers } from './productSuppliers.js';
 import { adminService } from './service.js';
 
@@ -14,12 +15,16 @@ export function canAdminister(matricula: string, admins: readonly string[]) {
 
 export const adminErrors: ErrorRequestHandler = (error, _req, res, next) => {
   let failure = error instanceof AdminError ? error : undefined;
-  if (error instanceof AuthDatabaseError || ['ECONNREFUSED', 'ETIMEDOUT', 'PROTOCOL_CONNECTION_LOST', 'ER_CON_COUNT_ERROR'].includes(error?.code)) {
+  if (error instanceof MysqlIdLimit) {
+    failure = new AdminError(409, 'ID_LIMIT', 'Limite de identificadores atingido.');
+  } else if (error instanceof MysqlLockTimeout) {
+    failure = new AdminError(409, 'CONCURRENT_UPDATE', 'Outro cadastro está em andamento. Tente novamente.');
+  } else if (error instanceof AuthDatabaseError || ['ECONNREFUSED', 'ETIMEDOUT', 'PROTOCOL_CONNECTION_LOST', 'ER_CON_COUNT_ERROR'].includes(error?.code)) {
     failure = new AdminError(503, 'DATABASE_UNAVAILABLE', 'Banco indisponível. Tente novamente.');
   } else if (['ER_LOCK_DEADLOCK', 'ER_LOCK_WAIT_TIMEOUT'].includes(error?.code)) {
     failure = new AdminError(409, 'CONCURRENT_UPDATE', 'Outra operação está atualizando os dados. Tente novamente.');
   } else if (error?.code === 'ER_DUP_ENTRY') {
-    const field = String(error.sqlMessage).match(/uq_\w+/)?.[0]?.replace(/^uq_[^_]+_/, '');
+    const field = String(error.sqlMessage).match(/\b(?:cpf|matricula|numero|cnpj|codigo_barras)\b|uq_\w+/)?.[0]?.replace(/^uq_[^_]+_/, '');
     failure = new AdminError(409, 'DUPLICATE', field ? 'Já existe um registro com esse valor em ' + field + '.' : 'Registro duplicado.');
   } else if (error?.code === 'ER_NO_REFERENCED_ROW_2') {
     failure = new AdminError(409, 'INVALID_REFERENCE', 'Um dos registros relacionados não existe.');
@@ -30,7 +35,7 @@ export const adminErrors: ErrorRequestHandler = (error, _req, res, next) => {
   res.status(failure.status).json({ error: { code: failure.code, message: failure.message } });
 };
 
-export function adminRoutes(auth: AuthService, pool: Pool | undefined, admins: readonly string[], origins: readonly string[]) {
+export function adminRoutes(auth: AuthService, pool: Pool | undefined, admins: readonly string[], origins: readonly string[], official = false) {
   const router = Router();
   const session = requireSession(auth);
   const csrf = requireTrustedOrigin(origins);
@@ -49,7 +54,7 @@ export function adminRoutes(auth: AuthService, pool: Pool | undefined, admins: r
   router.use('/pedidos-compra', session, requireAdmin, purchaseRoutes(pool, csrf), adminErrors);
   const resources: Resource[] = ['funcionarios', 'cargos', 'caixas', 'formas-pagamento', 'categorias', 'marcas', 'produtos', 'fornecedores'];
   for (const resource of resources) {
-    const controller = adminController(adminService(adminRepository(pool, resource), resource, admins), resource);
+    const controller = adminController(adminService(adminRepository(pool, resource, official), resource, admins), resource, official);
     const module = Router();
     module.use(session, requireAdmin);
     module.get('/', controller.getAll);

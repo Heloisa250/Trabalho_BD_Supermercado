@@ -7,7 +7,7 @@ Cada etapa exige instrução própria e aceite independente. Os resultados do le
 | R00 | Auditoria, diferenças, backup e instância paralela | Commit e hashes registrados, catálogo oficial validado e legado preservado. |
 | R01 | Configuração paralela do Express e conta dedicada | Schema exato, grants autorizados, health e ready reais nos dois ambientes. |
 | R02 | Login, bcrypt e lista administrativa | Provisionamento autorizado de contas de teste, login/logout e separação de supervisor e administrador. |
-| R03 | Funcionários, cargos, caixas, pagamentos e senha | IDs e valores obrigatórios explícitos, unicidade concorrente e CRUD real. |
+| R03 | Funcionários, cargos, caixas, pagamentos e senha | IDs e valores obrigatórios explícitos, unicidade concorrente e CRUD real após autorização da conta de escrita. |
 | R04 | Categorias, marcas, produtos, fornecedores e vínculos | Validação dos três ENUMs de unidade, IDs, ciclos, custos e interface com banco real. |
 | 05 | Pedidos e itens | Adaptar código existente para PENDENTE, IDs e datas explícitas, transições e valores validados no React e MySQL. |
 | 06 | Recebimento, lotes, validade e estoque | Recebimento transacional, código único por produto, saldo consistente, entradas e perdas rastreáveis. |

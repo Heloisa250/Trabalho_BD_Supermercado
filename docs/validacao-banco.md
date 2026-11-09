@@ -37,3 +37,8 @@ O arquivo seleciona o schema e executa oito conjuntos de consultas de leitura. C
 - A consulta de lote e pedido comprova o vínculo da amostra. Regras de recebimento parcial, validade, produto do item de venda e alocação de lotes ainda exigem casos próprios.
 
 A execução integral do arquivo de testes não foi realizada. A revisão automática bloqueou o envio do arquivo ao cliente MySQL por falta de confirmação sobre o conteúdo e o escopo da autorização. Os metadados acima foram verificados por consultas próprias e explícitas de leitura. A importação de dados, as consultas oficiais sobre dados carregados, o ensaio de restauração e os testes de compatibilidade da aplicação ficam para etapas autorizadas.
+
+
+## R03 — verificação administrativa
+
+A auditoria confirma ID explícito em funcionario, AUTO_INCREMENT em cargo, caixa e forma_pagamento, e ausência de defaults não nulos nas quatro tabelas. CPF, matrícula e número do caixa permanecem únicos no DDL. A unicidade de cargo e forma é implementada na aplicação. Os testes isolados cobrem alocação concorrente, rollback, timeout, limite de INT, duplicidade e proteção administrativa. A validação real de escrita depende de concessões específicas no MySQL oficial.

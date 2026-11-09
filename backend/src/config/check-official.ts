@@ -26,10 +26,15 @@ async function main() {
     assert.deepEqual(automatic.map((row) => row.name), ['caixa', 'cargo', 'categoria', 'forma_pagamento', 'marca']);
     const [grants] = await pool.query<RowDataPacket[]>('SHOW GRANTS');
     const allowed = ['GRANT USAGE ON *.* TO ', 'GRANT SELECT ON `Supermercado`.* TO '];
-    assert.equal(grants.length, 2);
-    assert.ok(allowed.every((prefix) => grants.some((row) => String(Object.values(row)[0]) ===
-      prefix + '`' + database.DB_USER + '`@`%`')));
-    console.info('MySQL oficial: schema Supermercado, 19 tabelas, 120 colunas, 25 FKs, 7 UNIQUE, 5 AUTO_INCREMENT, nenhuma gerada. Conta SELECT validada.');
+    const account = '`' + database.DB_USER + '`@`%`';
+    const expectedGrants = allowed.map((prefix) => prefix + account);
+    if (database.DB_USER === 'supermercado_r03_app') {
+      for (const table of ['funcionario', 'cargo', 'caixa', 'forma_pagamento']) {
+        expectedGrants.push('GRANT INSERT, UPDATE ON `Supermercado`.`' + table + '` TO ' + account);
+      }
+    }
+    assert.deepEqual(grants.map((row) => String(Object.values(row)[0])).sort(), expectedGrants.sort());
+    console.info('MySQL oficial: schema Supermercado, 19 tabelas, 120 colunas, 25 FKs, 7 UNIQUE, 5 AUTO_INCREMENT, nenhuma gerada. Privilégios do perfil validados.');
   } finally {
     await pool.end();
   }

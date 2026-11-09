@@ -10,6 +10,7 @@ const database = env.database ? createDatabase(env.database) : undefined;
 const app = createApp({
   corsOrigin: env.CORS_ORIGIN,
   database,
+  official,
   admins: env.ADMIN_MATRICULAS,
   auth: {
     service: authService(employeeRepository(database), env.JWT_SECRET, env.AUTH_TTL_SECONDS, official),

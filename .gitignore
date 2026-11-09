@@ -3,7 +3,13 @@ dist/
 .env
 .env.*
 !.env.example
+!/.env.official.example
 !/backend/.env.official.example
 coverage/
 
 /backups/
+*.key
+*.pem
+*.pfx
+*.p12
+*.sql.enc

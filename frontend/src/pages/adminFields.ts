@@ -44,6 +44,7 @@ export const modules = {
       { key: 'data_admissao', label: 'Data de admissão', type: 'date', required: true },
       { key: 'data_demissao', label: 'Data de demissão', type: 'date' },
       { key: 'senha', label: 'Senha inicial (mínimo de 12 caracteres)', type: 'password', required: true },
+      { key: 'ativo', label: 'Ativo', type: 'checkbox', initial: 'true' },
     ],
   },
   cargos: {
@@ -59,6 +60,7 @@ export const modules = {
     fields: [
       { key: 'numero', label: 'Número', type: 'number', required: true },
       { key: 'descricao', label: 'Descrição', max: 60 },
+      { key: 'ativo', label: 'Ativo', type: 'checkbox', initial: 'true' },
     ],
   },
   'formas-pagamento': {
@@ -66,6 +68,7 @@ export const modules = {
     fields: [
       { key: 'descricao', label: 'Descrição', required: true, max: 40 },
       { key: 'permite_troco', label: 'Permite troco', type: 'checkbox' },
+      { key: 'ativo', label: 'Ativo', type: 'checkbox', initial: 'true' },
     ],
   },
 } satisfies Record<string, { title: string; columns: string[]; fields: Field[] }>;

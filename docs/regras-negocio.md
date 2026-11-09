@@ -6,3 +6,8 @@
 - Subtotal é quantidade vezes preço, arredondado por linha. Persistir subtotal e troco em DECIMAL e calcular o total da venda com itens elegíveis. Troco depende da forma de pagamento e do valor recebido. Usar aritmética decimal exata e persistir alterações financeiras na mesma transação.
 - Preservar as unicidades funcionais necessárias em operações concorrentes onde o SQL não as impõe. Confirmar as regras de uma nota por venda e um cancelamento por item antes dos módulos correspondentes. O comprovante acadêmico não equivale à autorização fiscal.
 - Tratar exemplos do DML como dados de laboratório. Novos cadastros passam pelas validações da aplicação. A adoção do DML não substitui a validação de CPF, CNPJ, saldo, pagamento e consistência operacional.
+
+
+## Administração oficial
+
+No cadastro, funcionário, caixa e forma de pagamento exigem a situação inicial. A permissão de cancelamento pertence ao cargo e é independente da administração. F0001 fica protegido contra desativação e mudanças pela rota de administração. A edição parcial de funcionários importados não revalida um CPF ausente do corpo. Um novo CPF passa pela validação atual. Desativar caixa exige ausência de sessão aberta.

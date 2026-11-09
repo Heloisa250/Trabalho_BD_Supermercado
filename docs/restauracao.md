@@ -23,3 +23,35 @@ Digite a senha administrativa no prompt. Interrompa se algum comando falhar. Par
 
 4. Recrie a conta de aplicação com os privilégios necessários. Para o ambiente oficial até R02, siga [R01](r01-infraestrutura.md), defina `ADMIN_MATRICULAS=F0001` no perfil oficial e use um segredo JWT novo. A senha de login do funcionário é validada pelo hash restaurado no dump.
 5. Confira as tabelas e contagens, rode `npm run build` e teste `/api/v1/ready` e o login antes de usar a instância restaurada.
+
+## Restaurar o backup oficial cifrado
+
+Transfira o arquivo `supermercado-oficial-r031.sql.enc` por canal privado e entregue a chave por outro canal. O Git não contém nenhum dos dois. Na raiz do projeto, coloque o arquivo cifrado em `backups/` e a chave em `.env.backup-key-r031`. Crie a pasta se necessário. Verifique o SHA-256 do arquivo cifrado:
+
+```powershell
+Get-FileHash .\backups\supermercado-oficial-r031.sql.enc -Algorithm SHA256
+node scripts/restore-snapshot.mjs decrypt backups/supermercado-oficial-r031.sql.enc .env.backup-key-r031 backups/supermercado-recuperado.sql
+Get-FileHash .\backups\supermercado-recuperado.sql -Algorithm SHA256
+```
+
+O SHA-256 cifrado esperado é `256e0c0da5e6f2aa6053749f4695c87e88493f0e69d6e73d7d97855f2373eebf`. O SHA-256 do dump original é `98e3d45c9eb99b67d55e129fe3055b846f19ac17f67385ad91f862ca60d33d74`.
+
+Crie o perfil raiz do Compose conforme o README, inicie o MySQL oficial em um **volume novo** e confirme que o schema `Supermercado` está ausente antes de restaurar. O dump contém DDL e dados, inclusive comandos de substituição de tabelas.
+
+```powershell
+$opt = @('--env-file', '.env.official', '-f', 'compose.official.yaml')
+docker compose @opt up -d --wait mysql
+docker compose @opt exec mysql mysql -uroot -p -e "SHOW DATABASES LIKE 'Supermercado';"
+```
+
+Somente se a consulta não retornar o schema, execute:
+
+```powershell
+$id = docker compose @opt ps -q mysql
+docker cp .\backups\supermercado-recuperado.sql "${id}:/tmp/sqlider-restore.sql"
+docker compose @opt exec mysql sh -c 'mysql -uroot -p --batch --default-character-set=utf8mb4 < /tmp/sqlider-restore.sql'
+npm.cmd run db:official:init -- restored
+npm.cmd run check:official -w backend
+```
+
+O modo `restored` valida a estrutura e recria apenas contas e perfis locais. Use os comandos de build e inicialização do README. O login F0001 usa a senha já configurada antes do backup. Preserve os arquivos recuperados em local privado.

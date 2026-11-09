@@ -1,6 +1,6 @@
 import type { RequestHandler } from 'express';
 import type { z } from 'zod';
-import { id, list, schemas, status } from './schemas.js';
+import { id, list, officialCreates, schemas, status } from './schemas.js';
 import { AdminError, type Fields, type Resource } from './repository.js';
 import type { AdminService } from './service.js';
 
@@ -15,12 +15,13 @@ export function parse<T>(schema: z.ZodType<T>, input: unknown): T {
   return result.data;
 }
 
-export function adminController(service: AdminService, resource: Resource) {
+export function adminController(service: AdminService, resource: Resource, official = false) {
   const config = schemas[resource];
+  const createSchema = official && resource in officialCreates ? officialCreates[resource as keyof typeof officialCreates] : config.create;
   const getAll: RequestHandler = async (req, res) => { res.json(await service.list(parse(list, req.query))); };
   const getOne: RequestHandler = async (req, res) => { res.json(await service.detail(parse(id, req.params.id))); };
   const create: RequestHandler = async (req, res) => {
-    res.status(201).json(await service.create(parse(config.create as z.ZodType<Fields>, req.body)));
+    res.status(201).json(await service.create(parse(createSchema as z.ZodType<Fields>, req.body)));
   };
   const update: RequestHandler = async (req, res) => {
     const fields = parse(config.edit as z.ZodType<Fields>, req.body);

@@ -8,7 +8,7 @@ import helmet from 'helmet';
 import { handleError } from './middlewares/errors.js';
 import { healthRoutes } from './routes/health.js';
 
-export function createApp(options: { corsOrigin: string | string[]; checkDatabase: () => Promise<void>; auth?: AuthOptions; database?: Pool; admins?: readonly string[] }) {
+export function createApp(options: { corsOrigin: string | string[]; checkDatabase: () => Promise<void>; auth?: AuthOptions; database?: Pool; admins?: readonly string[]; official?: boolean }) {
   const app = express();
   app.disable('x-powered-by');
   app.use((_request, response, next) => {
@@ -22,7 +22,7 @@ export function createApp(options: { corsOrigin: string | string[]; checkDatabas
   if (options.auth) {
     const origins = [options.corsOrigin].flat();
     app.use('/api/v1/auth', authRoutes(options.auth, origins, options.database));
-    app.use('/api/v1', adminRoutes(options.auth.service, options.database, options.admins ?? [], origins));
+    app.use('/api/v1', adminRoutes(options.auth.service, options.database, options.admins ?? [], origins, options.official));
   }
   app.use((_request, response) => {
     response.status(404).json({ error: { code: 'NOT_FOUND', message: 'Rota não encontrada.' } });

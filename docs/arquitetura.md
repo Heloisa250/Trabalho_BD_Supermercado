@@ -23,3 +23,8 @@ Bloquear o pedido antes de editar itens ou estado. Bloquear o caixa antes de abr
 Manter DECIMAL como texto no driver e no JSON. Usar cálculo decimal exato ou inteiros escalados. Calcular subtotal e troco explicitamente em vendas. Em compras, somar subtotais arredondados, sem persistir total no cabeçalho. Preservar DATE e definir interpretação de DATETIME em R01.
 
 Separar testes isolados de testes HTTP e SQL reais. Antes da troca de ambiente, validar catálogo, grants, autenticação, concorrência, escrita, interfaces e regressão no banco oficial. Registrar os hashes dos arquivos e manter o ambiente legado disponível para retorno.
+
+
+## R03 — administração oficial
+
+O perfil oficial usa um alocador com conexão exclusiva e lock por tabela para funcionários. Cargos, caixas e formas de pagamento continuam com AUTO_INCREMENT. Cargos e formas de pagamento preservam a unicidade funcional com lock por tabela durante checagem e escrita. A regra cobre os escritores que adotam o protocolo. As PKs, FKs e UNIQUE do DDL continuam como proteção do banco.

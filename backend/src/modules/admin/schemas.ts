@@ -60,10 +60,16 @@ export const schemas = {
   marcas: { create: marca, edit: marca.partial() },
   produtos: { create: produto, edit: produto.omit({ ativo: true }).partial() },
   fornecedores: { create: fornecedor, edit: fornecedor.partial() },
-  funcionarios: { create: employee.extend({ senha: password }), edit: employee.partial() },
+  funcionarios: { create: employee.extend({ senha: password, ativo: z.boolean().optional() }), edit: employee.partial() },
   cargos: { create: cargo, edit: cargo.partial() },
-  caixas: { create: caixa, edit: caixa.partial() },
-  'formas-pagamento': { create: forma, edit: forma.partial() },
+  caixas: { create: caixa.extend({ ativo: z.boolean().optional() }), edit: caixa.partial() },
+  'formas-pagamento': { create: forma.extend({ ativo: z.boolean().optional() }), edit: forma.partial() },
+};
+
+export const officialCreates = {
+  funcionarios: schemas.funcionarios.create.extend({ ativo: z.boolean() }),
+  caixas: schemas.caixas.create.extend({ ativo: z.boolean() }),
+  'formas-pagamento': schemas['formas-pagamento'].create.extend({ ativo: z.boolean() }),
 };
 
 export const list = z.object({
