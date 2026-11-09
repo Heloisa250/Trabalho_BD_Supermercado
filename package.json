@@ -1,0 +1,22 @@
+{
+  "name": "supermercado-qualidade-lider",
+  "private": true,
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "concurrently -k \"npm run dev -w backend\" \"npm run dev -w frontend\"",
+    "build": "npm run build --workspaces",
+    "test": "npm test -w backend",
+    "start": "npm start -w backend"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.0",
+    "typescript": "~5.9.3",
+    "@types/node": "^22.15.0"
+  }
+}

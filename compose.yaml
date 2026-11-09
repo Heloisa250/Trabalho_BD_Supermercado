@@ -1,0 +1,22 @@
+name: supermercado-qualidade-lider-dev
+
+services:
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Defina MYSQL_ROOT_PASSWORD no arquivo .env}
+    ports:
+      - "127.0.0.1:${MYSQL_HOST_PORT:-3306}:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./sqlSupermercado2.sql:/sqlSupermercado2.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "--protocol=tcp", "-h", "127.0.0.1", "ping", "--silent"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 30s
+
+volumes:
+  mysql-data:

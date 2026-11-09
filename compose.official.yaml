@@ -1,0 +1,22 @@
+name: supermercado-qualidade-lider-oficial-dev
+
+services:
+  mysql:
+    image: mysql:8.4.13
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Use --env-file .env.official}
+    ports:
+      - "127.0.0.1:${MYSQL_OFFICIAL_PORT:-3307}:3306"
+    volumes:
+      - mysql-oficial-data:/var/lib/mysql
+      - ./database/official:/official:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "--protocol=tcp", "-h", "127.0.0.1", "ping", "--silent"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 30s
+
+volumes:
+  mysql-oficial-data:
