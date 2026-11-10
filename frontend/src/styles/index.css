@@ -10,6 +10,21 @@ body {
   @apply bg-slate-950 text-slate-100;
 }
 
+.dashboard-background {
+  isolation: isolate;
+}
+
+.dashboard-background::before {
+  content: "";
+  position: fixed;
+  inset: -8px;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(rgb(0 0 0 / 94%), rgb(0 0 0 / 94%)),
+    url("../assets/supermarket-aisle.png") center / cover no-repeat;
+  filter: blur(5px);
+}
+
 /* No Tailwind 4 a borda padrão usa currentColor; no tema escuro isso deixaria bordas claras demais. */
 *, ::before, ::after, ::backdrop {
   border-color: var(--color-slate-800);
