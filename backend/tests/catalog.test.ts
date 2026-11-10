@@ -11,11 +11,14 @@ test('catálogo: contratos HTTP e parâmetros SQL com pool isolado', async (cont
   const origin = 'http://127.0.0.1:5175';
   const secret = 'catalog-test-only-secret-32-characters';
   const auth = authService({ byMatricula: async () => undefined,
-    byId: async (id) => ({ id, matricula: id === 1 ? 'ADMIN' : 'OPERADOR', podeCancelar: 1 }) as Employee }, secret, 300);
+    byId: async (id) => ({ id, matricula: id === 1 ? 'ADMIN' : 'OPERADOR', podeCancelar: 1 }) as Employee }, secret, 300, true);
   const calls: { sql: string; values: unknown[] }[] = [];
   let error: string | undefined;
   async function execute(sql: string, values: unknown[] = []) {
     calls.push({ sql, values });
+    if (sql.includes('GET_LOCK')) return [[{ acquired: 1 }]];
+    if (sql.includes('RELEASE_LOCK')) return [[{ released: 1 }]];
+    if (sql.includes('MAX(')) return [[{ maxId: 0 }]];
     if (sql.startsWith('INSERT') && error) throw Object.assign(new Error(), { code: error });
     if (sql.startsWith('INSERT') || sql.startsWith('UPDATE')) return [{ insertId: 1, affectedRows: 1 }];
     if (sql.includes('FROM categoria ORDER BY')) return [[
@@ -26,15 +29,15 @@ test('catálogo: contratos HTTP e parâmetros SQL com pool isolado', async (cont
   const database = { execute, getConnection: async () => ({
     execute, beginTransaction: async () => {}, commit: async () => {}, rollback: async () => {}, release: () => {},
   }) } as unknown as Pool;
-  const server = createApp({ corsOrigin: origin, checkDatabase: async () => {}, database, admins: ['ADMIN'],
+  const server = createApp({ corsOrigin: origin, checkDatabase: async () => {}, database, admins: ['ADMIN'], official: true,
     auth: { service: auth, secure: false, ttl: 300 } }).listen(0, '127.0.0.1');
   context.after(() => new Promise<void>((resolve) => server.close(() => resolve())));
   await once(server, 'listening');
   const address = server.address();
   assert.ok(address && typeof address === 'object');
   const base = 'http://127.0.0.1:' + address.port + '/api/v1/';
-  const cookie = (id: number) => 'sqlider_session=' + jwt.sign({}, secret, {
-    subject: String(id), issuer: 'supermercado-qualidade-lider', audience: 'funcionario', expiresIn: 300,
+  const cookie = (id: number) => 'sqlider_official_session=' + jwt.sign({}, secret, {
+    subject: String(id), issuer: 'supermercado-qualidade-lider', audience: 'funcionario-oficial', expiresIn: 300,
   });
   async function send(path: string, status: number, method = 'GET', body?: object, session = cookie(1), source = origin) {
     const result = await fetch(base + path, { method, headers: { Cookie: session, Origin: source, 'Content-Type': 'application/json' },
@@ -53,7 +56,7 @@ test('catálogo: contratos HTTP e parâmetros SQL com pool isolado', async (cont
   await send('categorias/2', 409, 'PATCH', { id_categoria_pai: 99 });
 
   const product = { codigo_barras: '00012A', nome: 'Produto', id_categoria: 1, id_marca: 1,
-    unidade_medida: 'KG', preco_venda: '99999999.99', estoque_minimo: '1.025' };
+    unidade_medida: 'KG', preco_venda: '99999999.99', estoque_minimo: '1.025', estoque_maximo: '10.000', ativo: true };
   await send('marcas', 201, 'POST', { nome: 'Marca', fabricante: 'Fábrica' });
   await send('marcas/1', 200, 'PATCH', { fabricante: 'Outra' });
   await send('marcas?busca=Marca&fabricante=Outra', 200);
@@ -71,7 +74,7 @@ test('catálogo: contratos HTTP e parâmetros SQL com pool isolado', async (cont
   assert.match(calls.at(-1)!.sql, /ORDER BY t.preco_venda DESC/);
   await send('produtos?ordem=' + encodeURIComponent(attack), 400);
 
-  const supplier = { razao_social: 'Fornecedor', cnpj: '04.252.011/0001-10' };
+  const supplier = { razao_social: 'Fornecedor', cnpj: '04.252.011/0001-10', ativo: true };
   await send('fornecedores', 400, 'POST', { ...supplier, cnpj: '00000000000000' });
   await send('fornecedores', 201, 'POST', supplier);
   assert.ok(calls.some(({ values }) => values.includes('04252011000110')));
@@ -89,13 +92,16 @@ test('catálogo: contratos HTTP e parâmetros SQL com pool isolado', async (cont
   assert.deepEqual(update.values.slice(-2), [1, 1]);
   await send('produtos/1/fornecedores/1', 400, 'PATCH', { id_fornecedor: 2 });
 
+  await send('categorias', 201, 'POST', { nome: 'Filha' });
+  await send('marcas', 201, 'POST', { nome: 'Marca' });
   error = 'ER_DUP_ENTRY';
-  for (const [path, body] of [['categorias', { nome: 'Filha' }], ['marcas', { nome: 'Marca' }],
-    ['produtos', product], ['fornecedores', supplier], ['produtos/1/fornecedores', link]] as const) {
+  for (const [path, body] of [['produtos', product], ['fornecedores', supplier], ['produtos/1/fornecedores', link]] as const) {
     await send(path, 409, 'POST', body);
   }
   error = 'ER_NO_REFERENCED_ROW_2';
   await send('categorias', 409, 'POST', { nome: 'Órfã', id_categoria_pai: 99 });
   await send('produtos', 409, 'POST', { ...product, id_categoria: 99 });
   await send('produtos', 409, 'POST', { ...product, id_marca: 99 });
+  await send('produtos/99/fornecedores', 409, 'POST', link);
+  await send('produtos/1/fornecedores', 409, 'POST', { ...link, id_fornecedor: 99 });
 });

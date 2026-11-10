@@ -1,6 +1,6 @@
 import type { RequestHandler } from 'express';
 import type { z } from 'zod';
-import { id, list, officialCreates, schemas, status } from './schemas.js';
+import { id, list, officialCreates, officialProductEdit, schemas, status } from './schemas.js';
 import { AdminError, type Fields, type Resource } from './repository.js';
 import type { AdminService } from './service.js';
 
@@ -24,7 +24,8 @@ export function adminController(service: AdminService, resource: Resource, offic
     res.status(201).json(await service.create(parse(createSchema as z.ZodType<Fields>, req.body)));
   };
   const update: RequestHandler = async (req, res) => {
-    const fields = parse(config.edit as z.ZodType<Fields>, req.body);
+    const editSchema = official && resource === 'produtos' ? officialProductEdit : config.edit;
+    const fields = parse(editSchema as z.ZodType<Fields>, req.body);
     if (!Object.keys(fields).length) throw new AdminError(400, 'INVALID_INPUT', 'Informe ao menos um campo.');
     res.json(await service.update(parse(id, req.params.id), fields));
   };

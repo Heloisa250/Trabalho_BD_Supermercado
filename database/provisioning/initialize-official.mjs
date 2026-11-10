@@ -29,7 +29,8 @@ const counts = {
   sessao_caixa: 3, venda: 5, item_venda: 10, pagamento: 4, nota_fiscal: 3, pedido_compra: 5,
   produto_fornecedor: 5, item_pedido_compra: 5, lote: 5, movimentacao_estoque: 11, cancelamento_item: 2,
 };
-const appTables = ['funcionario', 'cargo', 'caixa', 'forma_pagamento'];
+const appTables = ['funcionario', 'cargo', 'caixa', 'forma_pagamento',
+  'categoria', 'marca', 'produto', 'fornecedor', 'produto_fornecedor', 'pedido_compra', 'item_pedido_compra', 'lote', 'sessao_caixa'];
 const secret = () => randomBytes(32).toString('hex');
 function docker(args, label, input, confidential = false) {
   const result = spawnSync('docker', args, { encoding: 'utf8', input, windowsHide: true });
@@ -104,7 +105,14 @@ if (fresh) {
 
 const appPassword = secret();
 createUser('supermercado_r03_app', appPassword, ['GRANT SELECT ON Supermercado.*',
-  ...appTables.map((table) => 'GRANT INSERT, UPDATE ON Supermercado.' + table)]);
+  ...appTables.map((table) => 'GRANT INSERT, UPDATE ON Supermercado.' + table),
+  'GRANT INSERT ON Supermercado.movimentacao_estoque',
+  // Script 08 (PDV): abertura de venda, itens e auditoria de cancelamento. Sem DELETE, sem pagamento/estoque.
+  'GRANT INSERT, UPDATE ON Supermercado.venda',
+  'GRANT INSERT, UPDATE ON Supermercado.item_venda',
+  'GRANT INSERT ON Supermercado.cancelamento_item',
+  // Script 09: finalização grava pagamentos. Só INSERT: pagamentos não são editados nem apagados.
+  'GRANT INSERT ON Supermercado.pagamento']);
 if (newProfiles) {
   const readPassword = secret();
   const provisionPassword = secret();

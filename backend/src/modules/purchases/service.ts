@@ -3,11 +3,13 @@ import { AdminError } from '../admin/repository.js';
 import type { PurchasesRepository } from './repository.js';
 import type { createOrder, editItem, editOrder, item } from './schemas.js';
 
-function requireOpen(status: string) {
-  if (status !== 'ABERTO') throw new AdminError(409, 'ORDER_NOT_OPEN', 'O pedido precisa estar aberto.');
-}
+export function purchasesService(repo: PurchasesRepository, official: boolean) {
+  const editable = official ? 'PENDENTE' : 'ABERTO';
+  function requireOpen(status: string) {
+    if (status !== editable) throw new AdminError(409, 'ORDER_NOT_OPEN', official
+      ? 'O pedido precisa estar pendente.' : 'O pedido precisa estar aberto.');
+  }
 
-export function purchasesService(repo: PurchasesRepository) {
   return {
     list: repo.list,
     order: repo.order,
@@ -25,7 +27,7 @@ export function purchasesService(repo: PurchasesRepository) {
           await repo.add(conn, id, line.id_produto, line.quantidade, line.custo_unitario);
         }
         return repo.order(id, conn);
-      });
+      }, true);
     },
     update(id: number, data: z.infer<typeof editOrder>) {
       return repo.transaction(async (conn) => {
@@ -58,11 +60,12 @@ export function purchasesService(repo: PurchasesRepository) {
     },
     transition(id: number, next: 'ENVIADO' | 'CANCELADO') {
       return repo.transaction(async (conn) => {
-        const { status } = await repo.order(id, conn, true);
+        const { status, data_recebimento } = await repo.order(id, conn, true);
         if (next === 'ENVIADO') {
           requireOpen(status);
           if (!await repo.hasItems(conn, id)) throw new AdminError(409, 'ORDER_EMPTY', 'Inclua pelo menos um item antes de enviar.');
-        } else if (status !== 'ABERTO' && status !== 'ENVIADO') {
+        } else if ((status !== editable && status !== 'ENVIADO') ||
+          (official && (data_recebimento !== null || await repo.hasReceipt(conn, id)))) {
           throw new AdminError(409, 'INVALID_TRANSITION', 'Este pedido não pode ser cancelado.');
         }
         await repo.update(conn, id, { status: next });

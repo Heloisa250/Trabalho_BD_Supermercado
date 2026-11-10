@@ -1,10 +1,11 @@
 import type { Pool, PoolConnection, ResultSetHeader, RowDataPacket } from 'mysql2/promise';
+import { nextExplicitId, transaction } from '../../config/mysql-transaction.js';
 import type { z } from 'zod';
 import { AdminError, type Fields } from '../admin/repository.js';
 import type { filters } from './schemas.js';
 
 type Connection = Pool | PoolConnection;
-type Order = RowDataPacket & { id_fornecedor: number; status: 'ABERTO' | 'ENVIADO' | 'RECEBIDO' | 'CANCELADO' };
+type Order = RowDataPacket & { id_fornecedor: number; data_recebimento: string | null; status: 'PENDENTE' | 'ABERTO' | 'ENVIADO' | 'RECEBIDO' | 'CANCELADO' };
 
 const from = `FROM pedido_compra pc JOIN fornecedor f ON f.id_fornecedor=pc.id_fornecedor
   JOIN funcionario u ON u.id_funcionario=pc.id_funcionario`;
@@ -13,7 +14,7 @@ const select = `SELECT pc.*, f.razao_social AS fornecedor, u.nome AS funcionario
   (SELECT COUNT(*) FROM item_pedido_compra i WHERE i.id_pedido=pc.id_pedido) AS quantidade_itens,
   (SELECT COALESCE(SUM(${subtotal}), 0.00) FROM item_pedido_compra i WHERE i.id_pedido=pc.id_pedido) AS total_estimado ${from}`;
 
-export function purchasesRepository(pool?: Pool) {
+export function purchasesRepository(pool: Pool | undefined, official: boolean) {
   function db() {
     if (!pool) throw new AdminError(503, 'DATABASE_UNAVAILABLE', 'Banco indisponível.');
     return pool;
@@ -24,24 +25,18 @@ export function purchasesRepository(pool?: Pool) {
   }
   async function order(id: number, conn: Connection = db(), lock = false) {
     const [result] = await rows<Order>(conn, lock
-      ? 'SELECT id_fornecedor,status FROM pedido_compra WHERE id_pedido=? FOR UPDATE'
+      ? 'SELECT id_fornecedor,status,data_recebimento FROM pedido_compra WHERE id_pedido=? FOR UPDATE'
       : select + ' WHERE pc.id_pedido=?', [id]);
     if (!result) throw new AdminError(404, 'NOT_FOUND', 'Pedido não encontrado.');
     return result;
   }
   return {
     order,
-    async transaction<T>(action: (conn: PoolConnection) => Promise<T>) {
-      const conn = await db().getConnection();
-      try {
-        await conn.beginTransaction();
-        const result = await action(conn);
-        await conn.commit();
-        return result;
-      } catch (error) {
-        await conn.rollback();
-        throw error;
-      } finally { conn.release(); }
+    transaction<T>(action: (conn: PoolConnection) => Promise<T>, creating = false) {
+      return transaction(db(), action, official && creating ? 'sqlider:Supermercado:pedido_compra' : undefined);
+    },
+    async hasReceipt(conn: Connection, id: number) {
+      return official && (await rows(conn, 'SELECT id_lote FROM lote WHERE id_pedido=? LIMIT 1 FOR SHARE', [id])).length > 0;
     },
     async list(data: z.infer<typeof filters>) {
       const where: string[] = [];
@@ -87,7 +82,14 @@ export function purchasesRepository(pool?: Pool) {
     async hasItems(conn: Connection, id: number) {
       return (await rows(conn, 'SELECT id_produto FROM item_pedido_compra WHERE id_pedido=? LIMIT 1', [id])).length > 0;
     },
-    async create(conn: Connection, supplier: number, employee: number, date?: string | null, note?: string | null) {
+    async create(conn: PoolConnection, supplier: number, employee: number, date?: string | null, note?: string | null) {
+      if (official) {
+        const id = await nextExplicitId(conn, 'pedido_compra', 'id_pedido');
+        await conn.execute(
+          'INSERT INTO pedido_compra (id_pedido,id_fornecedor,id_funcionario,data_pedido,data_prevista,observacao,status) VALUES (?,?,?,CURRENT_TIMESTAMP,?,?,?)',
+          [id, supplier, employee, date ?? null, note ?? null, 'PENDENTE']);
+        return id;
+      }
       const [result] = await conn.execute<ResultSetHeader>(
         'INSERT INTO pedido_compra (id_fornecedor,id_funcionario,data_prevista,observacao) VALUES (?,?,?,?)',
         [supplier, employee, date ?? null, note ?? null]);

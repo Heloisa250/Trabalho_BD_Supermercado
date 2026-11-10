@@ -34,6 +34,7 @@ test('administração HTTP com pool isolado e consultas inspecionadas', async (c
     if (sql.startsWith('INSERT')) return [{ insertId: 7 }];
     if (sql.startsWith('UPDATE')) return [{ affectedRows: 1 }];
     if (sql.includes('FROM sessao_caixa')) return [openSession ? [{ id_sessao: 5 }] : []];
+    if (sql.includes('FOR UPDATE') && values[0] === 999) return [[]];
     return [[{ id: 7, matricula: 'NOVO', data_admissao: '2026-01-01' }]];
   }
   const database = {
@@ -97,9 +98,17 @@ test('administração HTTP com pool isolado e consultas inspecionadas', async (c
   assert.equal((await send('caixas', 'POST', { numero: 20 }, admin)).status, 409);
   queryError = undefined;
   openSession = true;
-  assert.equal((await send('caixas/7/status', 'PATCH', { ativo: false }, admin)).status, 409);
+  calls = [];
+  const blocked = await send('caixas/7/status', 'PATCH', { ativo: false }, admin);
+  assert.equal(blocked.status, 409);
+  assert.deepEqual((await blocked.json()).error, {
+    code: 'OPEN_SESSION', message: 'Este caixa possui uma sessão aberta.',
+  });
   assert.equal(rolledBack, true);
+  assert.ok(calls.some(({ sql }) => sql.includes('data_fechamento IS NULL')));
+  assert.ok(!calls.some(({ sql }) => sql.startsWith('UPDATE')));
   openSession = false;
+  assert.equal((await send('caixas/999/status', 'PATCH', { ativo: false }, admin)).status, 404);
   for (const ativo of [false, true]) {
     assert.equal((await send('caixas/7/status', 'PATCH', { ativo }, admin)).status, 200);
   }

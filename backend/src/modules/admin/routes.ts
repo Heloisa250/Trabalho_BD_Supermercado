@@ -8,6 +8,9 @@ import { purchaseRoutes } from '../purchases/routes.js';
 import { MysqlIdLimit, MysqlLockTimeout } from '../../config/mysql-transaction.js';
 import { mountProductSuppliers } from './productSuppliers.js';
 import { adminService } from './service.js';
+import { stockRoutes } from '../stock/routes.js';
+import { cashRoutes } from '../cash/routes.js';
+import { salesRoutes } from '../sales/routes.js';
 
 export function canAdminister(matricula: string, admins: readonly string[]) {
   return admins.includes(matricula);
@@ -51,7 +54,10 @@ export function adminRoutes(auth: AuthService, pool: Pool | undefined, admins: r
     }
     next();
   };
-  router.use('/pedidos-compra', session, requireAdmin, purchaseRoutes(pool, csrf), adminErrors);
+  if (official) router.use(stockRoutes(pool, session, requireAdmin, csrf), adminErrors);
+  if (official) router.use('/sessoes-caixa', session, cashRoutes(pool, csrf, matricula => canAdminister(matricula,admins)), adminErrors);
+  if (official) router.use('/vendas', session, salesRoutes(pool, auth, csrf), adminErrors);
+  router.use('/pedidos-compra', session, requireAdmin, purchaseRoutes(pool, csrf, official), adminErrors);
   const resources: Resource[] = ['funcionarios', 'cargos', 'caixas', 'formas-pagamento', 'categorias', 'marcas', 'produtos', 'fornecedores'];
   for (const resource of resources) {
     const controller = adminController(adminService(adminRepository(pool, resource, official), resource, admins), resource, official);

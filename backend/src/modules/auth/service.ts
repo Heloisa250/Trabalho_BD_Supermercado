@@ -37,6 +37,15 @@ export function authService(repository: EmployeeRepository, secret: string, ttl:
 
   return {
     cookieName: official ? 'sqlider_official_session' : 'sqlider_session',
+    // Confirma identidade por matrícula+senha (bcrypt) sem emitir token; usado também na autorização de supervisor.
+    async verify(matricula: string, senha: string) {
+      const employee = await lookup(() => repository.byMatricula(matricula));
+      const hash = employee?.senhaHash;
+      const validHash = hash && /^\$2[aby]\$(?:0[4-9]|1[0-4])\$[./A-Za-z0-9]{53}$/.test(hash);
+      const matches = await bcrypt.compare(senha, validHash ? hash : dummyHash);
+      if (!employee || !validHash || !matches) return;
+      return publicProfile(employee);
+    },
     async login(matricula: string, senha: string) {
       const employee = await lookup(() => repository.byMatricula(matricula));
       const hash = employee?.senhaHash;

@@ -1,10 +1,70 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { Pool } from 'mysql2/promise';
-import { adminRepository } from '../src/modules/admin/repository.js';
+import { adminRepository, checkParent } from '../src/modules/admin/repository.js';
 import { adminService } from '../src/modules/admin/service.js';
-import { officialCreates, schemas } from '../src/modules/admin/schemas.js';
+import { officialCreates, officialProductEdit, schemas } from '../src/modules/admin/schemas.js';
 import { MysqlIdLimit, MysqlLockTimeout } from '../src/config/mysql-transaction.js';
+
+test('R04 usa o alocador concorrente para produto e fornecedor', async () => {
+  for (const [resource, table] of [['produtos', 'produto'], ['fornecedores', 'fornecedor']] as const) {
+    let maxId = 10;
+    let tail = Promise.resolve();
+    const pool = { async getConnection() {
+      let unlock: () => void;
+      let pending: number;
+      return {
+        async execute(sql: string, values: unknown[] = []) {
+          if (sql.includes('GET_LOCK')) {
+            assert.deepEqual(values, ['sqlider:Supermercado:' + table]);
+            const previous = tail;
+            tail = new Promise<void>((resolve) => { unlock = resolve; });
+            await previous;
+            return [[{ acquired: 1 }]];
+          }
+          if (sql.includes('RELEASE_LOCK')) { unlock(); return [[{ released: 1 }]]; }
+          if (sql.includes('MAX(id_' + table + ')')) return [[{ maxId }]];
+          if (sql.startsWith('INSERT INTO ' + table)) {
+            assert.match(sql, new RegExp('id_' + table));
+            pending = Number(values.at(-1));
+            return [{ insertId: 0 }];
+          }
+          return [[{ id: values[0] }]];
+        },
+        async beginTransaction() {},
+        async commit() { maxId = pending; },
+        release() {},
+      };
+    } } as unknown as Pool;
+    const repository = adminRepository(pool, resource, true);
+    const results = await Promise.all([repository.create({ ativo: true }), repository.create({ ativo: false })]);
+    assert.deepEqual(results.map(({ id }) => id), [11, 12]);
+  }
+});
+
+test('R04 valida o contrato oficial e preserva edição parcial de fornecedor importado', () => {
+  const product = {
+    codigo_barras: '001234', nome: 'Produto QA', id_categoria: 1, unidade_medida: 'KG',
+    preco_venda: '99999999.99', estoque_minimo: '0.001', estoque_maximo: '9999999.999', ativo: false,
+  };
+  assert.deepEqual(officialCreates.produtos.parse(product), product);
+  for (const field of ['unidade_medida', 'estoque_minimo', 'estoque_maximo', 'ativo'] as const) {
+    assert.equal(officialCreates.produtos.safeParse({ ...product, [field]: undefined }).success, false);
+  }
+  for (const changes of [{ unidade_medida: 'CX' }, { preco_venda: '1.001' }, { estoque_maximo: '10000000' }, { id_produto: 42 }]) {
+    assert.equal(officialCreates.produtos.safeParse({ ...product, ...changes }).success, false);
+  }
+  assert.equal(officialProductEdit.safeParse({ unidade_medida: 'PCT' }).success, false);
+  const supplier = { razao_social: 'Fornecedor QA', cnpj: '04.252.011/0001-10', ativo: false };
+  assert.equal(officialCreates.fornecedores.parse(supplier).cnpj, '04252011000110');
+  assert.equal(officialCreates.fornecedores.safeParse({ ...supplier, ativo: undefined }).success, false);
+  assert.equal(schemas.fornecedores.edit.safeParse({ cnpj: '00000000000000' }).success, false);
+  assert.equal(schemas.fornecedores.edit.safeParse({ razao_social: 'Nome atualizado' }).success, true);
+  const tree = [{ id_categoria: 1, id_categoria_pai: null }, { id_categoria: 2, id_categoria_pai: 1 }];
+  assert.doesNotThrow(() => checkParent(tree, undefined, 2));
+  assert.throws(() => checkParent(tree, undefined, 9), { code: 'INVALID_REFERENCE' });
+  assert.throws(() => checkParent(tree, 1, 2), { code: 'CATEGORY_CYCLE' });
+});
 
 test('R03 aloca IDs na conexão bloqueada e libera após commit ou rollback', async () => {
   let maxId = 5;

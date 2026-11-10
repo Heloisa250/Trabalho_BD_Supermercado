@@ -26,10 +26,10 @@ const resources = {
 
 export { AdminError } from './error.js';
 
-export function checkParent(tree: readonly { id_categoria: number; id_categoria_pai: number | null }[], id: number, parent: number) {
+export function checkParent(tree: readonly { id_categoria: number; id_categoria_pai: number | null }[], id: number | undefined, parent: number) {
   const nodes = new Map(tree.map((row) => [row.id_categoria, row.id_categoria_pai]));
-  if (!nodes.has(id)) throw new AdminError(404, 'NOT_FOUND', 'Categoria não encontrada.');
-  const seen = new Set([id]);
+  if (id !== undefined && !nodes.has(id)) throw new AdminError(404, 'NOT_FOUND', 'Categoria não encontrada.');
+  const seen = new Set(id === undefined ? [] : [id]);
   let current: number | null = parent;
   while (current !== null) {
     if (seen.has(current)) throw new AdminError(409, 'CATEGORY_CYCLE', 'A categoria pai criaria um ciclo.');
@@ -44,7 +44,7 @@ export function adminRepository(pool: Pool | undefined, resource: Resource, offi
   const spec = resources[resource];
   const uniqueField = official && resource === 'cargos' ? 'nome'
     : official && resource === 'formas-pagamento' ? 'descricao' : undefined;
-  const explicitId = official && resource === 'funcionarios';
+  const explicitId = official && (resource === 'funcionarios' || resource === 'produtos' || resource === 'fornecedores');
   const lock = explicitId || uniqueField ? 'sqlider:Supermercado:' + spec.table : undefined;
 
   async function checkUnique(connection: PoolConnection, fields: Fields, id?: number) {
@@ -63,6 +63,13 @@ export function adminRepository(pool: Pool | undefined, resource: Resource, offi
       `INSERT INTO ${spec.table} (${columns.join(',')}) VALUES (${columns.map(() => '?').join(',')})`,
       Object.values(fields));
     return result;
+  }
+
+  async function validateParent(connection: PoolConnection, parent: Fields[string], id?: number) {
+    if (resource !== 'categorias' || typeof parent !== 'number') return;
+    const [tree] = await connection.execute<(RowDataPacket & { id_categoria: number; id_categoria_pai: number | null })[]>(
+      'SELECT id_categoria, id_categoria_pai FROM categoria ORDER BY id_categoria FOR UPDATE');
+    checkParent(tree, id, parent);
   }
 
   function db() {
@@ -123,16 +130,19 @@ export function adminRepository(pool: Pool | undefined, resource: Resource, offi
       return { items: items.slice(0, filters.limite), pagina: filters.pagina, mais: items.length > filters.limite };
     },
     async create(fields: Fields) {
-      if (!lock) {
+      if (!lock && !(official && resource === 'categorias' && typeof fields.id_categoria_pai === 'number')) {
         const result = await insert(db(), fields);
         return detail(result.insertId);
       }
       return transaction(db(), async (connection) => {
+        await validateParent(connection, fields.id_categoria_pai);
         await checkUnique(connection, fields);
-        if (explicitId) {
+        if (explicitId && resource === 'funcionarios') {
           const [cargos] = await connection.execute<RowDataPacket[]>(
             'SELECT id_cargo FROM cargo WHERE id_cargo=? FOR SHARE', [fields.id_cargo]);
           if (!cargos.length) throw new AdminError(409, 'INVALID_REFERENCE', 'O cargo informado não existe.');
+        }
+        if (explicitId) {
           const id = await nextExplicitId(connection, spec.table, spec.key);
           await insert(connection, { ...fields, [spec.key]: id });
           return detail(id, connection);
@@ -143,11 +153,7 @@ export function adminRepository(pool: Pool | undefined, resource: Resource, offi
     },
     async update(id: number, fields: Fields, validate: (current: RowDataPacket) => void) {
       return transaction(db(), async (connection) => {
-        if (resource === 'categorias' && typeof fields.id_categoria_pai === 'number') {
-          const [tree] = await connection.execute<RowDataPacket[]>(
-            'SELECT id_categoria, id_categoria_pai FROM categoria ORDER BY id_categoria FOR UPDATE');
-          checkParent(tree as (RowDataPacket & { id_categoria: number; id_categoria_pai: number | null })[], id, fields.id_categoria_pai);
-        }
+        await validateParent(connection, fields.id_categoria_pai, id);
         const [locked] = await connection.execute<RowDataPacket[]>(
           `SELECT ${spec.key} FROM ${spec.table} WHERE ${spec.key}=? FOR UPDATE`, [id]);
         if (!locked.length) throw new AdminError(404, 'NOT_FOUND', 'Registro não encontrado.');

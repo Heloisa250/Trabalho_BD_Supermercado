@@ -5,6 +5,9 @@ import { parse } from 'dotenv';
 import bcrypt from 'bcryptjs';
 import { createConnection, type ResultSetHeader, type RowDataPacket } from 'mysql2/promise';
 
+// F0001: autorizado no R02 (administrador). F0002: autorizado no Script 08 (supervisor, sem acesso administrativo).
+const authorized: Record<string, { admin: boolean }> = { F0001: { admin: true }, F0002: { admin: false } };
+
 async function validateLogin(matricula: string, senha: string) {
   const origin = 'http://127.0.0.1:5176';
   const api = origin + '/api/v1/';
@@ -22,11 +25,13 @@ async function validateLogin(matricula: string, senha: string) {
     const crossed = await fetch('http://127.0.0.1:3001/api/v1/auth/me', {
       headers: { Cookie: cookie.replace('sqlider_official_session=', 'sqlider_session=') }, signal: AbortSignal.timeout(8000),
     });
-    if (!me.ok || (await me.json()).matricula !== matricula || !access.ok
-      || (await access.json()).autorizado !== true || crossed.status !== 401) {
+    const profile = me.ok ? await me.json() : null;
+    if (!profile || profile.matricula !== matricula || !access.ok
+      || (await access.json()).autorizado !== authorized[matricula].admin || crossed.status !== 401
+      || (matricula === 'F0002' && profile.permissoes?.pode_cancelar_item !== true)) {
       throw new Error('A credencial foi gravada, mas a validação de sessão ou acesso falhou.');
     }
-    console.info('Login, sessão, acesso administrativo e rejeição no legado confirmados.');
+    console.info('Login, sessão, nível de acesso esperado e rejeição no legado confirmados.');
   } finally {
     const logout = await fetch(api + 'auth/logout', {
       method: 'POST', headers: { Origin: origin, Cookie: cookie }, signal: AbortSignal.timeout(8000),
@@ -40,7 +45,7 @@ async function validateLogin(matricula: string, senha: string) {
 
 async function main() {
   const [matricula, ...extra] = process.argv.slice(2);
-  if (matricula !== 'F0001' || extra.length) throw new Error('Este provisionamento foi autorizado somente para F0001.');
+  if (!Object.hasOwn(authorized, matricula ?? '') || extra.length) throw new Error('Provisionamento autorizado somente para F0001 ou F0002.');
   if (!process.stdin.isTTY || !process.stdout.isTTY) throw new Error('Use um terminal interativo.');
 
   const silent = new Writable({ write(_chunk, _encoding, callback) { callback(); } });

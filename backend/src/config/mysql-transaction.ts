@@ -3,21 +3,24 @@ import type { Pool, PoolConnection, RowDataPacket } from 'mysql2/promise';
 export class MysqlLockTimeout extends Error {}
 export class MysqlIdLimit extends Error {}
 
-export async function transaction<T>(pool: Pool, operation: (connection: PoolConnection) => Promise<T>, lock?: string) {
+// Aceita um ou mais locks nomeados, adquiridos na ordem informada e liberados em ordem inversa.
+// Quem usa vários locks deve sempre pedi-los na mesma ordem global para evitar espera circular.
+export async function transaction<T>(pool: Pool, operation: (connection: PoolConnection) => Promise<T>, lock?: string | readonly string[]) {
   const connection = await pool.getConnection();
-  let locked = false;
+  const locks = lock === undefined ? [] : [lock].flat();
+  const held: string[] = [];
   let healthy = true;
   try {
-    if (lock) {
+    for (const name of locks) {
       let result: RowDataPacket[];
       try {
-        [result] = await connection.execute<RowDataPacket[]>('SELECT GET_LOCK(?, 5) AS acquired', [lock]);
+        [result] = await connection.execute<RowDataPacket[]>('SELECT GET_LOCK(?, 5) AS acquired', [name]);
       } catch (error) {
         healthy = false;
         throw error;
       }
       if (result[0]?.acquired !== 1) throw new MysqlLockTimeout();
-      locked = true;
+      held.push(name);
     }
     await connection.beginTransaction();
     try {
@@ -30,9 +33,10 @@ export async function transaction<T>(pool: Pool, operation: (connection: PoolCon
       throw error;
     }
   } finally {
-    if (locked && healthy) {
+    for (const name of held.reverse()) {
+      if (!healthy) break;
       try {
-        const [[row]] = await connection.execute<RowDataPacket[]>('SELECT RELEASE_LOCK(?) AS released', [lock!]);
+        const [[row]] = await connection.execute<RowDataPacket[]>('SELECT RELEASE_LOCK(?) AS released', [name]);
         healthy = row?.released === 1;
       } catch { healthy = false; }
     }

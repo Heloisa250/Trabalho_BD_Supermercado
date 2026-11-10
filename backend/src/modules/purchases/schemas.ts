@@ -20,7 +20,7 @@ export const createOrder = fields.extend({ itens: z.array(item).max(100).optiona
 export const editOrder = fields.partial().refine((data) => Object.keys(data).length > 0);
 export const filters = z.object({
   numero: id.optional(), fornecedor: id.optional(), funcionario: id.optional(),
-  status: z.enum(['ABERTO', 'ENVIADO', 'RECEBIDO', 'CANCELADO']).optional(),
+  status: z.enum(['ABERTO', 'PENDENTE', 'ENVIADO', 'RECEBIDO', 'CANCELADO']).optional(),
   inicio: date.optional(), fim: date.optional(),
   pagina: z.coerce.number().int().min(1).max(100000).default(1),
   limite: z.coerce.number().int().min(1).max(100).default(20),

@@ -1,5 +1,7 @@
 export type Field = { key: string; label: string; type?: string; required?: boolean; max?: number; initial?: string; options?: string[] };
 
+const official = import.meta.env.MODE === 'official';
+
 export const modules = {
   categorias: { title: 'Categorias', columns: ['nome', 'pai', 'descricao'], fields: [
     { key: 'nome', label: 'Nome', required: true, max: 60 },
@@ -16,7 +18,7 @@ export const modules = {
     { key: 'descricao', label: 'Descrição', max: 255 },
     { key: 'id_categoria', label: 'Categoria', type: 'categorias', required: true },
     { key: 'id_marca', label: 'Marca', type: 'marcas' },
-    { key: 'unidade_medida', label: 'Unidade de medida', options: ['UN', 'KG', 'L', 'CX', 'PCT'], initial: 'UN' },
+    { key: 'unidade_medida', label: 'Unidade de medida', options: official ? ['UN', 'KG', 'L'] : ['UN', 'KG', 'L', 'CX', 'PCT'], initial: 'UN' },
     { key: 'preco_venda', label: 'Preço de venda', type: 'decimal', required: true },
     { key: 'estoque_minimo', label: 'Estoque mínimo', type: 'decimal', required: true, initial: '0' },
     { key: 'estoque_maximo', label: 'Estoque máximo', type: 'decimal', required: true, initial: '0' },
@@ -29,6 +31,7 @@ export const modules = {
     { key: 'telefone', label: 'Telefone', max: 20 },
     { key: 'email', label: 'E-mail', type: 'email', max: 100 },
     { key: 'endereco', label: 'Endereço', max: 200 },
+    ...(official ? [{ key: 'ativo', label: 'Ativo', type: 'checkbox', initial: 'true' }] : []),
   ] },
   funcionarios: {
     title: 'Funcionários',

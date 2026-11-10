@@ -40,6 +40,18 @@ Compare as 19 tabelas visíveis com [o inventário do SQL](docs/analise-banco.md
 
 ## Administração no ambiente oficial
 
+O [Script 09 — Pagamentos e finalização](docs/pagamentos-finalizacao.md) documenta o contrato de `valor`, `valor_recebido` e `troco`, a baixa FEFO, a ordem de bloqueios, o comprovante demonstrativo e a validação em cópia isolada do banco.
+
+O [Script 08 — Frente de Caixa (PDV)](docs/pdv-vendas.md) documenta abertura de venda, itens por código de barras, totais, cancelamentos autorizados por supervisor, endpoints `/api/v1/vendas` e as concessões MySQL necessárias. A tela fica em `/pdv`.
+
+O [Script 07 de sessões de caixa](docs/cash-sessions.md) documenta abertura, conferência, fechamento e a concessão necessária no MySQL oficial.
+
+O [Script 06 de estoque e lotes](docs/stock-official.md) descreve recebimento, entradas, perdas, ajustes, alertas de validade e permissões para escrita.
+
+O [catálogo R04](docs/catalog-dev.md) descreve o contrato do banco oficial e as concessões específicas para habilitar escrita após autorização.
+
+O [Script 05 de pedidos de compra](docs/purchases-dev.md) documenta o fluxo do fornecedor ao envio, os endpoints e as permissões da conta oficial. Itens gravados podem ser editados enquanto o pedido estiver pendente. A interface não oferece remoção individual. Recebimento e estoque pertencem ao Script 06.
+
 Use a API oficial em 3002 e o React de validação em 5176. A conta de leitura permite consultar os dados oficiais. O [guia R03](docs/r03-admin-oficial.md) detalha a preparação da conta de escrita e os testes reais ainda pendentes.
 
 ## Como executar o Supermercado Qualidade Líder em outro computador
@@ -81,4 +93,4 @@ Para uma **instalação limpa**, siga a seção anterior. Ela cria novos segredo
 
 Para **recuperar o estado atual**, transfira o backup cifrado e a chave por canais privados separados e siga [a restauração do backup cifrado](docs/restauracao.md#restaurar-o-backup-oficial-cifrado). A recuperação preserva os registros acrescentados durante o desenvolvimento e a credencial bcrypt de F0001. Gere novas configurações locais e reconfira `npm.cmd run check:official -w backend` e `/api/v1/ready`.
 
-O R03.2 ainda aguarda validação visual. Depois de recuperar o ambiente, entre no React oficial em http://127.0.0.1:5176/ e siga o [roteiro de administração](docs/r03-admin-oficial.md) quando iniciar essa etapa.
+Os fluxos administrativos do R03.2 foram validados no React oficial. As evidências complementares ainda pendentes estão na [validação do banco](docs/validacao-banco.md).

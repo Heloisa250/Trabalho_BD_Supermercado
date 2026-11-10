@@ -3,3 +3,11 @@
 body {
   @apply bg-slate-50 text-slate-900;
 }
+
+/* Comprovante demonstrativo: imprime só o comprovante. */
+@media print {
+  body * { visibility: hidden; }
+  .receipt, .receipt * { visibility: visible; }
+  .receipt { position: absolute; inset: 0 auto auto 0; border: 0; }
+  .no-print { display: none; }
+}

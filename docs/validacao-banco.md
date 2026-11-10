@@ -1,5 +1,7 @@
 # Validação do R00
 
+O [Script 05](purchases-dev.md) usa `pedido_compra` com ID, data e status explícitos e `item_pedido_compra` com chave composta. Após as duas concessões autorizadas, o Script 05.1 validou criação, edição, envio e cancelamento no ambiente oficial. A contagem passou de cinco para sete pedidos e de cinco para seis itens, com os pedidos históricos preservados.
+
 ## Estrutura executada
 
 O DDL oficial foi importado em MySQL 8.4.13 no container paralelo `supermercado-qualidade-lider-oficial-dev-mysql-1`. A verificação anterior confirmou a ausência do schema e o SHA-256 do arquivo montado. A importação concluiu sem erros.
@@ -40,5 +42,9 @@ A execução integral do arquivo de testes não foi realizada. A revisão autom�
 
 
 ## R03 — verificação administrativa
+
+O R03.2 confirmou os fluxos administrativos. A captura dos códigos HTTP autenticados no navegador e a apresentação visual do conflito de caixa com sessão aberta em ambiente isolado ficaram pendentes.
+
+Para o R04, a inspeção por leitura do `INFORMATION_SCHEMA` confirmou as cinco tabelas do catálogo no MySQL oficial. O R04.1 confirmou as concessões de escrita e a persistência de duas categorias, uma marca, um produto, um fornecedor e um vínculo demonstrativos. O [roteiro do catálogo](catalog-dev.md) registra as concessões e os limites da validação automatizada.
 
 A auditoria confirma ID explícito em funcionario, AUTO_INCREMENT em cargo, caixa e forma_pagamento, e ausência de defaults não nulos nas quatro tabelas. CPF, matrícula e número do caixa permanecem únicos no DDL. A unicidade de cargo e forma é implementada na aplicação. Os testes isolados cobrem alocação concorrente, rollback, timeout, limite de INT, duplicidade e proteção administrativa. A validação real de escrita depende de concessões específicas no MySQL oficial.

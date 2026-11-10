@@ -4,17 +4,19 @@ import { useSearchParams } from 'react-router-dom';
 import { adminRequest, json, optionsFor, reais } from '../services/admin';
 import type { Employee } from '../services/auth';
 import { buttonClass, inputClass } from './adminFields';
+import { ReceiveOrder } from './ReceiveOrder';
 
 type Order = {
   id_pedido: number; id_fornecedor: number; fornecedor: string; funcionario: string;
   data_pedido: string; data_prevista: string | null; observacao: string | null;
-  status: 'ABERTO' | 'ENVIADO' | 'CANCELADO' | 'RECEBIDO'; quantidade_itens: number; total_estimado: string;
+  data_recebimento: string | null; status: 'PENDENTE' | 'ABERTO' | 'ENVIADO' | 'CANCELADO' | 'RECEBIDO'; quantidade_itens: number; total_estimado: string;
 };
 type Line = { id_produto: number; nome: string; codigo_barras: string; unidade_medida: string; quantidade: string; custo_unitario: string; subtotal: string };
 type Offer = Pick<Line, 'id_produto' | 'nome' | 'codigo_barras' | 'unidade_medida'> & { preco_custo: string };
 type Page<T> = { items: T[]; mais: boolean; pagina: number };
 const endpoint = 'pedidos-compra';
-const states = ['ABERTO', 'ENVIADO', 'CANCELADO', 'RECEBIDO'];
+const editable = import.meta.env.MODE === 'official' ? 'PENDENTE' : 'ABERTO';
+const states = [editable, 'ENVIADO', 'CANCELADO', 'RECEBIDO'];
 
 function date(value?: string | null) {
   return value ? value.slice(0, 10).split('-').reverse().join('/') : '—';
@@ -112,6 +114,7 @@ export function PurchasesPage({ employee }: { employee: Employee }) {
   const [draft, setDraft] = useState<Line[]>([]);
   const [editing, setEditing] = useState<Line>();
   const [confirm, setConfirm] = useState<'enviar' | 'cancelar'>();
+  const [receiving, setReceiving] = useState(false);
   const [notice, setNotice] = useState('');
   const [draftError, setDraftError] = useState('');
   const vendors = useQuery({ queryKey: ['admin', 'fornecedores', 'options'], queryFn: ({ signal }) => optionsFor('fornecedores', signal) });
@@ -139,6 +142,7 @@ export function PurchasesPage({ employee }: { employee: Employee }) {
   });
 
   function selectOrder(id?: number) {
+    setReceiving(false);
     setSelected(id); setEditing(undefined); setConfirm(undefined); setCreating(false); setNotice(''); save.reset();
   }
   function saveOrder(event: FormEvent<HTMLFormElement>) {
@@ -153,6 +157,11 @@ export function PurchasesPage({ employee }: { employee: Employee }) {
       : { route: path, method: 'PATCH', body: fields });
   }
   function changePage(page: number) { const next = new URLSearchParams(params); next.set('pagina', String(page)); setParams(next); }
+
+  function confirmAction(action: 'enviar' | 'cancelar') {
+    save.reset();
+    setConfirm(action);
+  }
 
   return <section className="min-w-0 p-4 sm:p-8">
     <header className="mb-5 flex flex-wrap items-center justify-between gap-3"><h1 className="text-2xl font-bold">Pedidos de Compra</h1>
@@ -206,11 +215,12 @@ export function PurchasesPage({ employee }: { employee: Employee }) {
       {save.isError && <p role="alert" className="text-red-800">{save.error.message}</p>}
       <p>Responsável: {creating ? employee.nome : order.data?.funcionario}</p>
       {order.data && <p>Fornecedor: {order.data.fornecedor} · Criado em {date(order.data.data_pedido)} · {order.data.status}</p>}
-      {(creating || order.data?.status === 'ABERTO') ? <form key={creating ? 'new' : selected} onSubmit={saveOrder}
+      {order.data?.data_recebimento && <p>Recebido em {date(order.data.data_recebimento)} {order.data.data_recebimento.slice(11)}</p>}
+      {(creating || order.data?.status === editable) ? <form key={creating ? 'new' : selected} onSubmit={saveOrder}
         id="purchase-header" className="grid gap-3 sm:grid-cols-2">
         {(creating || order.data?.quantidade_itens === 0) && <label className="grid gap-1 text-sm">Fornecedor
           <select className={inputClass} name="id_fornecedor" required defaultValue={order.data?.id_fornecedor ?? ''}
-            onChange={(event) => { if (creating) { setSupplier(Number(event.target.value)); setDraft([]); setDraftError(''); } }}>
+            onChange={(event) => { if (creating) { setSupplier(Number(event.target.value)); setDraft([]); setEditing(undefined); setDraftError(''); } }}>
             <option value="">Selecione</option>{vendors.data?.filter((row) => row.ativo === 1 || row.id === order.data?.id_fornecedor)
               .map((row) => <option key={row.id} value={row.id}>{row.razao_social}</option>)}
           </select></label>}
@@ -229,9 +239,10 @@ export function PurchasesPage({ employee }: { employee: Employee }) {
         <p>{draft.length} itens · Total estimado {reais(amount(draft.reduce((sum, line) => sum + lineCents(line.quantidade, line.custo_unitario), 0n)))}</p>
       </>}
       {order.data && items.data && <>
-        <Lines lines={items.data} onEdit={order.data.status === 'ABERTO' ? setEditing : undefined} />
+        <Lines lines={items.data} onEdit={order.data.status === editable ? setEditing : undefined} />
+        {order.data.status === editable && <p className="text-sm text-slate-600">Itens gravados podem ser editados enquanto o pedido estiver pendente. A remoção individual não está disponível.</p>}
         <p>{order.data.quantidade_itens} itens · Total estimado {reais(order.data.total_estimado)}</p>
-        {order.data.status === 'ABERTO' && <ItemForm key={selected + ':' + (editing?.id_produto ?? '')} supplier={order.data.id_fornecedor}
+        {order.data.status === editable && <ItemForm key={selected + ':' + (editing?.id_produto ?? '')} supplier={order.data.id_fornecedor}
           editing={editing} busy={save.isPending} onSave={({ id_produto, quantidade, custo_unitario }) => {
             setNotice('');
             save.mutate(editing ? { route: path + '/itens/' + id_produto, method: 'PATCH', body: { quantidade, custo_unitario } }
@@ -240,11 +251,15 @@ export function PurchasesPage({ employee }: { employee: Employee }) {
       </>}
       {editing && <button className={buttonClass} disabled={save.isPending} onClick={() => setEditing(undefined)}>Cancelar edição do item</button>}
       <div className="flex flex-wrap gap-2">
-        {(creating || order.data?.status === 'ABERTO') && <button className={buttonClass} form="purchase-header" disabled={save.isPending}>{save.isPending ? 'Salvando…' : creating ? 'Criar pedido' : 'Salvar pedido'}</button>}
-        {order.data?.status === 'ABERTO' && <button className={buttonClass} disabled={!order.data.quantidade_itens || save.isPending} onClick={() => setConfirm('enviar')}>Enviar pedido</button>}
-        {(order.data?.status === 'ABERTO' || order.data?.status === 'ENVIADO') && <button className={buttonClass} disabled={save.isPending} onClick={() => setConfirm('cancelar')}>Cancelar pedido</button>}
+        {(creating || order.data?.status === editable) && <button className={buttonClass} form="purchase-header" disabled={save.isPending}>{save.isPending ? 'Salvando…' : creating ? 'Criar pedido' : 'Salvar pedido'}</button>}
+        {order.data?.status === editable && <button className={buttonClass} disabled={!order.data.quantidade_itens || save.isPending} onClick={() => confirmAction('enviar')}>Enviar pedido</button>}
+        {(order.data?.status === editable || (order.data?.status === 'ENVIADO' && !order.data.data_recebimento)) && <button className={buttonClass} disabled={save.isPending} onClick={() => confirmAction('cancelar')}>Cancelar pedido</button>}
+        {import.meta.env.MODE === 'official' && order.data?.status === 'ENVIADO' && !order.data.data_recebimento && !!items.data?.length &&
+          <button className={buttonClass} disabled={save.isPending} onClick={() => setReceiving(true)}>Receber mercadorias</button>}
       </div>
     </section>}
+    {receiving && selected !== undefined && items.data && <ReceiveOrder order={selected} items={items.data}
+      close={() => setReceiving(false)} received={() => { setReceiving(false); setNotice('Recebimento registrado.'); }} />}
     {confirm && <dialog ref={(node) => { if (node && !node.open) node.showModal(); }}
       onCancel={(event) => { event.preventDefault(); if (!save.isPending) setConfirm(undefined); }}
       className="fixed inset-0 m-auto w-[min(90vw,28rem)] rounded-xl bg-white p-6 shadow-xl backdrop:bg-black/40">

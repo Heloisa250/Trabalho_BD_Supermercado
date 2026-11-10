@@ -66,7 +66,18 @@ export const schemas = {
   'formas-pagamento': { create: forma.extend({ ativo: z.boolean().optional() }), edit: forma.partial() },
 };
 
+const officialProduct = produto.extend({
+  unidade_medida: z.enum(['UN', 'KG', 'L']),
+  estoque_minimo: quantity,
+  estoque_maximo: quantity,
+  ativo: z.boolean(),
+});
+
+export const officialProductEdit = officialProduct.omit({ ativo: true }).partial();
+
 export const officialCreates = {
+  produtos: officialProduct,
+  fornecedores: fornecedor.extend({ ativo: z.boolean() }),
   funcionarios: schemas.funcionarios.create.extend({ ativo: z.boolean() }),
   caixas: schemas.caixas.create.extend({ ativo: z.boolean() }),
   'formas-pagamento': schemas['formas-pagamento'].create.extend({ ativo: z.boolean() }),
