@@ -1,0 +1,114 @@
+﻿{
+    "gerado_em":  "2026-11-10T12:16:57.7007741-03:00",
+    "mysql":  "8.4.13",
+    "schema":  "Supermercado",
+    "container":  "supermercado-qualidade-lider-oficial-dev-mysql-1",
+    "volume":  "supermercado-qualidade-lider-oficial-dev_mysql-oficial-data",
+    "commit_aplicacao":  "6202a620c450f365dfcd979cfefa4db310aabf12",
+    "alteracoes_locais_nao_commitadas":  true,
+    "commit_sql_oficial":  "4bb569c",
+    "arquivos_sql_oficiais":  {
+                                  "Supermercado_dml.sql":  "0da3145472fdfa9f13ed89c467045d04c66db8027dd0691dbf6638a215960cd8",
+                                  "Supermercado_ddl.sql":  "d5227f6e5259da79f157d88b79a9d44df437025e3ba99357a754924c603c1308"
+                              },
+    "estrutura":  "19:120:25",
+    "colunas_fk_verificadas":  26,
+    "orfaos_fk":  0,
+    "total_registros":  136,
+    "contagens":  {
+                      "caixa":  7,
+                      "cargo":  7,
+                      "forma_pagamento":  7,
+                      "marca":  6,
+                      "categoria":  7,
+                      "fornecedor":  6,
+                      "funcionario":  8,
+                      "produto":  6,
+                      "sessao_caixa":  5,
+                      "venda":  7,
+                      "item_venda":  14,
+                      "pagamento":  5,
+                      "nota_fiscal":  3,
+                      "pedido_compra":  7,
+                      "produto_fornecedor":  6,
+                      "item_pedido_compra":  6,
+                      "lote":  7,
+                      "movimentacao_estoque":  19,
+                      "cancelamento_item":  3
+                  },
+    "checksums":  {
+                      "caixa":  "45836984",
+                      "cargo":  "2476428382",
+                      "forma_pagamento":  "2345899138",
+                      "marca":  "1945829920",
+                      "categoria":  "1868640494",
+                      "fornecedor":  "812245796",
+                      "funcionario":  "3340619586",
+                      "produto":  "3008861116",
+                      "sessao_caixa":  "4260712384",
+                      "venda":  "1999840695",
+                      "item_venda":  "2333498870",
+                      "pagamento":  "3888081096",
+                      "nota_fiscal":  "1130915848",
+                      "pedido_compra":  "3131135952",
+                      "produto_fornecedor":  "4122461130",
+                      "item_pedido_compra":  "2029116442",
+                      "lote":  "806229136",
+                      "movimentacao_estoque":  "1520989734",
+                      "cancelamento_item":  "2613263768"
+                  },
+    "funcionarios_chave":  [
+                               {
+                                   "matricula":  "F0001",
+                                   "ativo":  1,
+                                   "pode_cancelar_item":  1,
+                                   "formato_hash":  "bcrypt"
+                               },
+                               {
+                                   "matricula":  "F0002",
+                                   "ativo":  1,
+                                   "pode_cancelar_item":  1,
+                                   "formato_hash":  "bcrypt"
+                               }
+                           ],
+    "sessoes_caixa":  [
+                          {
+                              "id_sessao":  1,
+                              "situacao":  "FECHADA"
+                          },
+                          {
+                              "id_sessao":  2,
+                              "situacao":  "FECHADA"
+                          },
+                          {
+                              "id_sessao":  3,
+                              "situacao":  "ABERTA"
+                          },
+                          {
+                              "id_sessao":  4,
+                              "situacao":  "FECHADA"
+                          },
+                          {
+                              "id_sessao":  5,
+                              "situacao":  "ABERTA"
+                          }
+                      ],
+    "vendas_por_status":  {
+                              "ABERTA":  1,
+                              "FINALIZADA":  4,
+                              "CANCELADA":  2
+                          },
+    "dump":  {
+                 "arquivo":  "supermercado-oficial-transfer01-20261110-121652.sql",
+                 "bytes":  30558,
+                 "sha256":  "5a980c443f90db94270e16d2283d51030459bf68fbbd02884cf3dba1d2b069cc"
+             },
+    "cifrado":  {
+                    "arquivo":  "supermercado-oficial-transfer01-20261110-121652.sql.enc",
+                    "bytes":  30586,
+                    "sha256":  "8e0873df88157f0c945f22e0480de5b865e4ba29b12cb24ffbfb804ce52ce743",
+                    "formato":  "AES-256-GCM (IV 12 bytes + tag 16 bytes + texto cifrado), chave aleatória de 256 bits em arquivo separado",
+                    "teste_descriptografia":  "aprovado: SHA-256 igual ao dump original"
+                },
+    "restauracao_isolada":  "aprovada: estrutura, contagens, CHECKSUM TABLE de 19 tabelas e FKs iguais à origem"
+}
