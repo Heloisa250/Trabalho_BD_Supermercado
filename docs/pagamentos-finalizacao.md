@@ -79,10 +79,10 @@ GRANT INSERT ON Supermercado.pagamento TO 'supermercado_r03_app'@'%';
 
 ## Validação isolada
 
-`backend/tests/integration/isolated-checkout.ts` roda contra uma **cópia descartável** do banco oficial (container próprio, porta ≠ 3307) com a conta da aplicação limitada aos grants oficiais + `INSERT` em `pagamento`:
+`backend/tests/integration/isolated-checkout.ts` cria um MySQL 8.4.13 descartável com porta local automática, armazenamento em memória e credenciais próprias. Carrega o DDL oficial e dados fictícios, inicia uma API de teste e confere pagamentos, baixas FEFO, concorrência e rollback por HTTP e SQL.
 
 ```bash
-S09_DB_PORT=3319 S09_DB_PASSWORD=... npx tsx tests/integration/isolated-checkout.ts
+npx tsx backend/tests/integration/isolated-checkout.ts
 ```
 
-Para testar a interface contra essa cópia sem tocar no ambiente oficial, rode uma segunda API (diretório com `.env.official` apontando para a cópia, `PORT=3012`) e `FRONTEND_PORT=5177 FRONTEND_API_TARGET=http://127.0.0.1:3012 vite --mode official`.
+Execute na raiz do projeto, com Docker em execução e dependências instaladas. O teste confere a identidade do container antes de removê-lo ao final.

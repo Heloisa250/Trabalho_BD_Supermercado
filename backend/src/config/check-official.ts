@@ -2,16 +2,18 @@ import assert from 'node:assert/strict';
 import type { RowDataPacket } from 'mysql2/promise';
 import { checkDatabase, createDatabase } from './database.js';
 import { loadEnvironment } from './env.js';
+import { validateOfficialGrants } from './official-grants.js';
 
 async function main() {
   const { database } = loadEnvironment(true);
-  if (!database) throw new Error('Conta de leitura ainda não configurada.');
+  if (!database) throw new Error('Conta oficial ainda não configurada.');
   const pool = createDatabase(database);
   try {
     await checkDatabase(pool, 'Supermercado');
-    const [identity] = await pool.query<RowDataPacket[]>('SELECT CURRENT_USER() AS account, @@lower_case_table_names AS caseMode');
+    const [identity] = await pool.query<RowDataPacket[]>('SELECT CURRENT_USER() AS account, @@lower_case_table_names AS caseMode, VERSION() AS version');
     assert.equal(identity[0].account, database.DB_USER + '@%');
     assert.equal(identity[0].caseMode, 0);
+    assert.equal(identity[0].version, '8.4.13');
     const [counts] = await pool.query<RowDataPacket[]>(`SELECT
       (SELECT COUNT(*) FROM information_schema.TABLES WHERE BINARY TABLE_SCHEMA = DATABASE() AND TABLE_TYPE='BASE TABLE') AS tablesCount,
       COUNT(*) AS columnsCount, SUM(EXTRA LIKE '%GENERATED%') AS generatedCount
@@ -25,15 +27,7 @@ async function main() {
       WHERE BINARY TABLE_SCHEMA = DATABASE() AND EXTRA='auto_increment' ORDER BY TABLE_NAME`);
     assert.deepEqual(automatic.map((row) => row.name), ['caixa', 'cargo', 'categoria', 'forma_pagamento', 'marca']);
     const [grants] = await pool.query<RowDataPacket[]>('SHOW GRANTS');
-    const allowed = ['GRANT USAGE ON *.* TO ', 'GRANT SELECT ON `Supermercado`.* TO '];
-    const account = '`' + database.DB_USER + '`@`%`';
-    const expectedGrants = allowed.map((prefix) => prefix + account);
-    if (database.DB_USER === 'supermercado_r03_app') {
-      for (const table of ['funcionario', 'cargo', 'caixa', 'forma_pagamento']) {
-        expectedGrants.push('GRANT INSERT, UPDATE ON `Supermercado`.`' + table + '` TO ' + account);
-      }
-    }
-    assert.deepEqual(grants.map((row) => String(Object.values(row)[0])).sort(), expectedGrants.sort());
+    validateOfficialGrants(database.DB_USER, grants.map(row => String(Object.values(row)[0])));
     console.info('MySQL oficial: schema Supermercado, 19 tabelas, 120 colunas, 25 FKs, 7 UNIQUE, 5 AUTO_INCREMENT, nenhuma gerada. Privilégios do perfil validados.');
   } finally {
     await pool.end();
