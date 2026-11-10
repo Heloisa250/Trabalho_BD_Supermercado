@@ -86,5 +86,6 @@ export const labels: Record<string, string> = {
   pode_cancelar_item: 'Autoriza cancelamento', numero: 'Número', permite_troco: 'Permite troco',
 };
 
-export const inputClass = 'rounded-lg border border-slate-400 bg-white px-3 py-2';
-export const buttonClass = 'rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium disabled:opacity-50';
+
+// Classes visuais centralizadas em components/ui (Script 11); reexportadas para preservar os imports existentes.
+export { buttonClass, inputClass } from '../components/ui';

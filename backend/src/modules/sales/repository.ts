@@ -1,5 +1,6 @@
 import type { Pool, PoolConnection, RowDataPacket } from 'mysql2/promise';
 import { nextExplicitId } from '../../config/mysql-transaction.js';
+import { sqlBusinessDate } from '../../config/business-time.js';
 import { CASH_FORM_SQL } from '../cash/conference.js';
 import type { LotRow, PaymentForm } from './checkout.js';
 
@@ -22,10 +23,10 @@ async function rows<T>(conn: Conn, sql: string, args: Arg[] = []) {
   return result as unknown as T[];
 }
 
-const productSelect = `SELECT p.id_produto,p.codigo_barras,p.nome,p.unidade_medida,p.preco_venda,p.ativo,
-  COALESCE(SUM(IF(l.quantidade_atual>0 AND (l.data_validade IS NULL OR l.data_validade>=CURRENT_DATE),l.quantidade_atual,0)),0) AS disponivel,
+const productSelect = () => `SELECT p.id_produto,p.codigo_barras,p.nome,p.unidade_medida,p.preco_venda,p.ativo,
+  COALESCE(SUM(IF(l.quantidade_atual>0 AND (l.data_validade IS NULL OR l.data_validade>=${sqlBusinessDate()}),l.quantidade_atual,0)),0) AS disponivel,
   COALESCE(SUM(l.quantidade_atual),0) AS fisico,
-  COALESCE(SUM(IF(l.data_validade<CURRENT_DATE,l.quantidade_atual,0)),0) AS vencido
+  COALESCE(SUM(IF(l.data_validade<${sqlBusinessDate()},l.quantidade_atual,0)),0) AS vencido
   FROM produto p LEFT JOIN lote l USING(id_produto)`;
 const itemSelect = `SELECT i.id_item_venda,i.id_venda,i.id_produto,i.quantidade,i.preco_unitario,i.subtotal,
   p.nome,p.codigo_barras,p.unidade_medida,c.id_cancelamento,c.data_hora AS cancelado_em,c.motivo,f.matricula AS supervisor
@@ -41,11 +42,11 @@ export function salesRepository(conn: Conn) {
   return {
     async employeeActive(id: number) {
       return (await rows(conn, `SELECT 1 FROM funcionario WHERE id_funcionario=? AND ativo=1
-        AND (data_demissao IS NULL OR data_demissao>CURRENT_DATE) FOR SHARE`, [id])).length === 1;
+        AND (data_demissao IS NULL OR data_demissao>${sqlBusinessDate()}) FOR SHARE`, [id])).length === 1;
     },
     async supervisor(id: number) {
       const [row] = await rows<SupervisorRow>(conn, `SELECT f.id_funcionario,c.pode_cancelar_item FROM funcionario f JOIN cargo c USING(id_cargo)
-        WHERE f.id_funcionario=? AND f.ativo=1 AND (f.data_demissao IS NULL OR f.data_demissao>CURRENT_DATE) FOR SHARE`, [id]);
+        WHERE f.id_funcionario=? AND f.ativo=1 AND (f.data_demissao IS NULL OR f.data_demissao>${sqlBusinessDate()}) FOR SHARE`, [id]);
       return row;
     },
     async openSessionOf(operator: number) {
@@ -78,15 +79,15 @@ export function salesRepository(conn: Conn) {
       await conn.execute("INSERT INTO venda (id_venda,id_sessao,data_hora,valor_total,status) VALUES (?,?,CURRENT_TIMESTAMP,'0.00','ABERTA')", [id, session]);
     },
     async productById(id: number) {
-      const [row] = await rows<ProductRow>(conn, productSelect + ' WHERE p.id_produto=? GROUP BY p.id_produto', [id]);
+      const [row] = await rows<ProductRow>(conn, productSelect() + ' WHERE p.id_produto=? GROUP BY p.id_produto', [id]);
       return row;
     },
     async productByBarcode(code: string) {
-      const [row] = await rows<ProductRow>(conn, productSelect + ' WHERE BINARY p.codigo_barras=? GROUP BY p.id_produto', [code]);
+      const [row] = await rows<ProductRow>(conn, productSelect() + ' WHERE BINARY p.codigo_barras=? GROUP BY p.id_produto', [code]);
       return row;
     },
     async searchProducts(term: string) {
-      return rows<ProductRow>(conn, productSelect + ` WHERE p.ativo=1 AND (LOCATE(?,p.nome)>0 OR LOCATE(?,p.codigo_barras)=1)
+      return rows<ProductRow>(conn, productSelect() + ` WHERE p.ativo=1 AND (LOCATE(?,p.nome)>0 OR LOCATE(?,p.codigo_barras)=1)
         GROUP BY p.id_produto ORDER BY p.nome,p.id_produto LIMIT 20`, [term, term]);
     },
     async items(sale: number, lock = false) {
@@ -131,7 +132,7 @@ export function salesRepository(conn: Conn) {
     async lockLots(products: readonly number[]) {
       if (!products.length) return [];
       return rows<LotRow>(conn, `SELECT id_lote,id_produto,data_validade,data_entrada,quantidade_atual,
-        (data_validade IS NOT NULL AND data_validade<CURRENT_DATE) AS vencido
+        (data_validade IS NOT NULL AND data_validade<${sqlBusinessDate()}) AS vencido
         FROM lote WHERE id_produto IN (${products.map(() => '?').join(',')}) ORDER BY id_lote FOR UPDATE`, [...products]);
     },
     async productsActive(products: readonly number[]) {

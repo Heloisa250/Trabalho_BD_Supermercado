@@ -28,3 +28,16 @@ Separar testes isolados de testes HTTP e SQL reais. Antes da troca de ambiente, 
 ## R03 — administração oficial
 
 O perfil oficial usa um alocador com conexão exclusiva e lock por tabela para funcionários. Cargos, caixas e formas de pagamento continuam com AUTO_INCREMENT. Cargos e formas de pagamento preservam a unicidade funcional com lock por tabela durante checagem e escrita. A regra cobre os escritores que adotam o protocolo. As PKs, FKs e UNIQUE do DDL continuam como proteção do banco.
+
+## Módulos operacionais e relatórios (Scripts 05–10)
+
+| Módulo | Back-end | Front-end | Escrita |
+| --- | --- | --- | --- |
+| Compras (05) | `modules/purchases` | `PurchasesPage` | `pedido_compra`, `item_pedido_compra` |
+| Estoque (06) | `modules/stock` (lock `estoque`) | `StockPage`, `ReceiveOrder` | `lote`, `movimentacao_estoque` |
+| Caixa (07) | `modules/cash` (`cashConference`) | `CashSessionsPage` | `sessao_caixa` |
+| PDV (08) | `modules/sales` (lock `venda`) | `PdvPage` | `venda`, `item_venda`, `cancelamento_item` |
+| Finalização (09) | `modules/sales/checkout.ts` (locks `venda` → `estoque`) | `PdvPayment` | `pagamento`, `lote`, `movimentacao_estoque`, `venda` |
+| Dashboard (10) | `modules/dashboard` | `DashboardPage` (Recharts) | nenhuma: somente SELECT |
+
+O dashboard reutiliza a regra de dinheiro físico e a conferência do Script 07, o arredondamento por item do Script 05 e a aritmética decimal do Script 08. Consultas agregam relações 1:N em subconsultas antes do JOIN. Datas: gravação em UTC, apresentação em UTC−3 (ver [dicionário de métricas](dashboard-metricas.md)).

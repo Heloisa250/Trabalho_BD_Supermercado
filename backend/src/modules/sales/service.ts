@@ -188,10 +188,13 @@ export function salesService({ write, checkout, read, verify }: SalesDeps) {
         if (!session || session.id_operador !== operator) throw fail(403, 'FORBIDDEN', 'Sessão de outro operador.');
         if (session.data_fechamento !== null) throw fail(409, 'SESSION_CLOSED', 'A sessão de caixa está fechada.');
         if (session.caixa_ativo !== 1) throw fail(409, 'INACTIVE_TERMINAL', 'Terminal inativo.');
-        if ((await repo.openSales(session.id_sessao, true)).length) throw fail(409, 'SALE_ALREADY_OPEN', 'Já existe uma venda aberta nesta sessão.');
+        // Política de uma venda ABERTA por sessão: um pedido repetido (duplo clique, F5, reenvio) recupera a venda
+        // aberta existente em vez de criar outra ou falhar.
+        const [existing] = await repo.openSales(session.id_sessao, true);
+        if (existing) return { ...await view(repo, existing, session), recuperada: true };
         const id = await repo.nextId('venda', 'id_venda');
         await repo.insertSale(id, session.id_sessao);
-        return view(repo, (await repo.sale(id))!, session);
+        return { ...await view(repo, (await repo.sale(id))!, session), recuperada: false };
       });
     },
     addItem(saleId: number, operator: number, input: { codigo_barras?: string; id_produto?: number; quantidade: string }) {

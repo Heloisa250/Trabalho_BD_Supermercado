@@ -40,6 +40,12 @@ Compare as 19 tabelas visíveis com [o inventário do SQL](docs/analise-banco.md
 
 ## Administração no ambiente oficial
 
+O [TRANSFER-01 — Restaurar o Supermercado em outro computador](docs/transfer-01.md) leva o estado completo do MySQL oficial (backup cifrado, testado em restauração isolada) e explica a instalação no novo computador.
+
+O [Script 11 — Interface e UX](docs/interface-ux.md) traz o diagnóstico da interface, a regra temporal única (datas comerciais em America/Sao_Paulo, timestamps em UTC), a investigação da venda nº 7 e o roteiro de apresentação. `npm test` na raiz executa os testes do back-end e do front-end.
+
+O [Script 10 — Dashboard gerencial](docs/dashboard-metricas.md) traz o dicionário de métricas, a convenção de fuso (UTC gravado, Brasília exibido), as consultas e o procedimento de verificação. A página fica em `/admin/dashboard`, restrita a administradores.
+
 O [Script 09 — Pagamentos e finalização](docs/pagamentos-finalizacao.md) documenta o contrato de `valor`, `valor_recebido` e `troco`, a baixa FEFO, a ordem de bloqueios, o comprovante demonstrativo e a validação em cópia isolada do banco.
 
 O [Script 08 — Frente de Caixa (PDV)](docs/pdv-vendas.md) documenta abertura de venda, itens por código de barras, totais, cancelamentos autorizados por supervisor, endpoints `/api/v1/vendas` e as concessões MySQL necessárias. A tela fica em `/pdv`.

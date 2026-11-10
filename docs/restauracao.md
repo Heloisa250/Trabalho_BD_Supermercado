@@ -1,5 +1,7 @@
 # Recuperação do projeto
 
+> Para levar o **estado atual completo** do banco oficial a outro computador, use o [TRANSFER-01](transfer-01.md). As seções abaixo descrevem os backups anteriores (R02/R031).
+
 O código, os arquivos SQL oficiais e os dois arquivos Compose fazem parte do Git. Os volumes do Docker ficam na máquina onde o Docker roda. Para recuperar os dados atuais em outra máquina, copie também a pasta local `backups/` por um meio privado. Os dumps incluem dados de funcionários e hashes de senha. A pasta é ignorada pelo Git.
 
 - `backups/supermercado-legado-r02.sql` restaura o schema `supermercado`, normalmente publicado na porta 3306.

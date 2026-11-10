@@ -11,7 +11,7 @@
   "scripts": {
     "dev": "concurrently -k \"npm run dev -w backend\" \"npm run dev -w frontend\"",
     "build": "npm run build --workspaces",
-    "test": "npm test -w backend",
+    "test": "npm test -w backend && npm test -w frontend",
     "db:official:init": "node database/provisioning/initialize-official.mjs",
     "start": "npm start -w backend"
   },

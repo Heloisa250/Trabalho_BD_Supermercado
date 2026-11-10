@@ -1,3 +1,4 @@
+import { Badge } from '../components/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -16,7 +17,7 @@ function valueOf(form: FormData, field: Field) {
 
 function display(key: string, value: Row[string]) {
   if (key === 'preco_venda' && typeof value === 'string') return reais(value);
-  if (key === 'ativo') return value ? 'Ativo' : 'Inativo';
+  if (key === 'ativo') return <Badge status={value ? 'ATIVO' : 'INATIVO'} />;
   if (key === 'permite_troco' || key === 'pode_cancelar_item') return value ? 'Sim' : 'Não';
   return value ?? '—';
 }
@@ -157,16 +158,16 @@ export function AdminPage({ module }: { module: Module }) {
           <button className={buttonClass}>Filtrar</button>
         </form>
       )}
-      {notice && <p role="status" className="mb-3 text-emerald-800">{notice}</p>}
+      {notice && <p role="status" className="mb-3 text-emerald-400">{notice}</p>}
       {query.isPending && <p role="status">Carregando…</p>}
-      {query.isError && <p role="alert" className="text-red-800">{query.error.message}</p>}
+      {query.isError && <p role="alert" className="text-red-300">{query.error.message}</p>}
       {query.data?.items.length === 0 && <p>Nenhum registro encontrado.</p>}
       {query.data && query.data.items.length > 0 && (
-        <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+        <div className="overflow-x-auto rounded-lg border border-slate-800 bg-slate-900">
           <table className="w-full text-left text-sm">
-            <thead className="bg-slate-100"><tr>{config.columns.map((key) => <th className="p-3" key={key}>{labels[key]}</th>)}<th className="p-3">Ações</th></tr></thead>
+            <thead className="bg-slate-800"><tr>{config.columns.map((key) => <th className="p-3" key={key}>{labels[key]}</th>)}<th className="p-3">Ações</th></tr></thead>
             <tbody>{query.data.items.map((row) => (
-              <tr key={row.id} className="border-t border-slate-200">
+              <tr key={row.id} className="border-t border-slate-800">
                 {config.columns.map((key) => <td className="p-3" key={key}>{module === 'categorias' && key === 'nome' ? categoryPath(row) : display(key, row[key])}</td>)}
                 <td className="p-3"><div className="flex flex-wrap gap-2">
                   <button className={buttonClass} onClick={() => open({ mode: 'detail', id: row.id })}>Detalhes</button>
@@ -187,7 +188,7 @@ export function AdminPage({ module }: { module: Module }) {
         <button className={buttonClass} disabled={!query.data.mais} onClick={() => goTo(page + 1)}>Próxima</button>
       </nav>}
       {editor && (
-        <section className="mt-6 rounded-xl border border-slate-200 bg-white p-4">
+        <section className="mt-6 rounded-xl border border-slate-800 bg-slate-900 p-4">
           <div className="mb-3 flex justify-between"><h2 className="font-semibold">{editor.mode === 'detail' ? 'Detalhes' : editor.mode === 'create' ? 'Cadastro' : 'Edição'}</h2>
             <button className={buttonClass} disabled={save.isPending} onClick={() => setEditor(undefined)}>Fechar</button></div>
           {editor.id && selected.isPending && <p role="status">Carregando registro…</p>}
@@ -200,9 +201,11 @@ export function AdminPage({ module }: { module: Module }) {
           {module === 'produtos' && editor.mode === 'detail' && selected.data && <ProductSuppliers key={selected.data.id} id={selected.data.id} />}
           {editor.mode !== 'detail' && (!editor.id || selected.data) && requiredOptions.every((query) => query.isSuccess) && (
             <form key={editor.id ?? 'new'} className="grid gap-3 sm:grid-cols-2" onSubmit={submit}>
+              <p className="text-xs text-slate-400 sm:col-span-2">Campos com <span className="text-red-400">*</span> são obrigatórios.</p>
               {fields.map((field: Field) => {
                 const value = selected.data?.[field.key];
-                return <label key={field.key} className="grid gap-1 text-sm">{field.label}
+                return <label key={field.key} className="grid gap-1 text-sm"><span className="font-medium text-slate-300">{field.label}
+                  {field.required && <span className="text-red-400" aria-hidden="true"> *</span>}</span>
                   {field.type === 'cargo' || field.type === 'categorias' || field.type === 'marcas' ?
                     <select className={inputClass} name={field.key} required={field.required} defaultValue={String(value ?? '')}>
                       <option value="">{field.required ? 'Selecione' : 'Nenhuma'}</option>
@@ -219,7 +222,7 @@ export function AdminPage({ module }: { module: Module }) {
                 </label>;
               })}
               {optionError && <p role="alert">{optionError.message}</p>}
-              {save.isError && <p role="alert" className="text-red-800">{save.error.message}</p>}
+              {save.isError && <p role="alert" className="text-red-300">{save.error.message}</p>}
               <button className={buttonClass} disabled={save.isPending}>{save.isPending ? 'Salvando…' : 'Salvar'}</button>
             </form>
           )}
@@ -227,9 +230,9 @@ export function AdminPage({ module }: { module: Module }) {
       )}
       {confirm && (
         <dialog ref={(dialog) => { if (dialog && !dialog.open) dialog.showModal(); }}
-          onCancel={(event) => { event.preventDefault(); if (!save.isPending) setConfirm(undefined); }} aria-labelledby="confirm-title" className="fixed inset-0 z-10 m-auto w-[min(90vw,28rem)] rounded-xl bg-white p-6 shadow-2xl backdrop:bg-black/40">
+          onCancel={(event) => { event.preventDefault(); if (!save.isPending) setConfirm(undefined); }} aria-labelledby="confirm-title" className="fixed inset-0 z-10 m-auto w-[min(90vw,28rem)] rounded-xl bg-slate-900 p-6 shadow-2xl backdrop:bg-black/70">
           <h2 id="confirm-title" className="font-semibold">{confirm.ativo ? 'Confirmar desativação?' : 'Confirmar ativação?'}</h2>
-          {save.isError && <p role="alert" className="mt-2 text-red-800">{save.error.message}</p>}
+          {save.isError && <p role="alert" className="mt-2 text-red-300">{save.error.message}</p>}
           <div className="mt-4 flex gap-2">
             <button className={buttonClass} disabled={save.isPending} onClick={() => setConfirm(undefined)}>Cancelar</button>
             <button className={buttonClass} disabled={save.isPending}

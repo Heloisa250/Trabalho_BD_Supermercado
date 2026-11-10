@@ -1,3 +1,5 @@
+import { anyDate } from '../services/format';
+import { Badge } from '../components/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -22,8 +24,9 @@ function display(key: string, value: Row[string]) {
   if (value == null) return '—';
   if (key === 'custo_unitario') return reais(String(value));
   if (decimalFields.includes(key)) return String(value).replace('.', ',');
-  if (key.startsWith('data_')) return String(value).slice(0, 10).split('-').reverse().join('/') + String(value).slice(10);
-  if (key === 'faixa') return { baixo: 'Abaixo do mínimo', normal: 'Dentro da faixa', alto: 'Acima do máximo' }[String(value)];
+  if (key.startsWith('data_')) return anyDate(String(value)); // DATE sem fuso; DATETIME (UTC) em Brasília
+  if (key === 'faixa') return <Badge status={String(value)}>{{ baixo: 'Abaixo do mínimo', normal: 'Dentro da faixa', alto: 'Acima do máximo' }[String(value)]}</Badge>;
+  if (key === 'tipo') return <Badge status={String(value)} />;
   return String(value);
 }
 
@@ -95,7 +98,7 @@ export function StockPage({ section }: { section: keyof typeof sections }) {
     {data.isPending && <p role="status">Carregando…</p>}
     {(data.isError || products.isError) && <p role="alert">{data.error?.message ?? products.error?.message}</p>}
     {data.data?.items.length === 0 && <p>Nenhum registro encontrado.</p>}
-    {!!data.data?.items.length && <div className="overflow-x-auto rounded border bg-white"><table className="w-full text-left text-sm">
+    {!!data.data?.items.length && <div className="overflow-x-auto rounded border bg-slate-900"><table className="w-full text-left text-sm">
       <thead><tr>{config.columns.map(key => <th key={key} className="p-2">{labels[key]}</th>)}{section === 'lotes' && <th>Ações</th>}</tr></thead>
       <tbody>{data.data.items.map(record => <tr key={String(record.id_movimentacao ?? record.id_lote ?? record.id_produto)} className="border-t">
         {config.columns.map(key => <td className="p-2" key={key}>{key === 'lotes'
@@ -111,7 +114,7 @@ export function StockPage({ section }: { section: keyof typeof sections }) {
     {action && <dialog ref={node => { if (node && !node.open) node.showModal(); }} onCancel={event => {
       event.preventDefault();
       if (!save.isPending) setAction(undefined);
-    }} className="fixed inset-0 m-auto w-[min(90vw,32rem)] rounded-xl bg-white p-6 shadow-xl backdrop:bg-black/40">
+    }} className="fixed inset-0 m-auto w-[min(90vw,32rem)] rounded-xl bg-slate-900 p-6 shadow-xl backdrop:bg-black/70">
       <form onSubmit={submit} className="grid gap-3">
         <h2 className="text-lg font-semibold">{action.title}</h2>
         {action.lot ? <>

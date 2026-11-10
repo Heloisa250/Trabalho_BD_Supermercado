@@ -27,8 +27,8 @@ export function PasswordPage() {
       <label className="grid gap-1 text-sm">Senha atual<input className={inputClass} type="password" name="senhaAtual" autoComplete="current-password" required /></label>
       <label className="grid gap-1 text-sm">Nova senha<input className={inputClass} type="password" name="novaSenha" autoComplete="new-password" minLength={12} required /></label>
       <label className="grid gap-1 text-sm">Confirmar nova senha<input className={inputClass} type="password" name="confirmacao" autoComplete="new-password" minLength={12} required /></label>
-      {change.isError && <p role="alert" className="text-red-800">{change.error.message}</p>}
-      {change.isSuccess && <p role="status" className="text-emerald-800">Senha alterada.</p>}
+      {change.isError && <p role="alert" className="text-red-300">{change.error.message}</p>}
+      {change.isSuccess && <p role="status" className="text-emerald-400">Senha alterada.</p>}
       <button className={buttonClass} disabled={change.isPending}>{change.isPending ? 'Salvando…' : 'Alterar senha'}</button>
     </form>
   </section>;

@@ -4,6 +4,7 @@ import type { Pool, ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 import { z } from 'zod';
 import { password } from '../admin/schemas.js';
 import { AuthDatabaseError } from './service.js';
+import { sqlBusinessDate } from '../../config/business-time.js';
 
 const input = z.object({
   senhaAtual: z.string().min(1).refine((s) => Buffer.byteLength(s, 'utf8') <= 72),
@@ -19,7 +20,7 @@ export function changePassword(pool?: Pool): RequestHandler {
     }
     if (!pool) throw new AuthDatabaseError();
     const id = res.locals.employee.id;
-    const active = 'ativo=1 AND (data_demissao IS NULL OR data_demissao>CURRENT_DATE)';
+    const active = 'ativo=1 AND (data_demissao IS NULL OR data_demissao>' + sqlBusinessDate() + ')';
     try {
       const [rows] = await pool.execute<RowDataPacket[]>(
         'SELECT senha_hash FROM funcionario WHERE id_funcionario=? AND ' + active, [id]);

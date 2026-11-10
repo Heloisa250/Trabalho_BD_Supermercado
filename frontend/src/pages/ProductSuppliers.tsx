@@ -28,13 +28,13 @@ export function ProductSuppliers({ id }: { id: number }) {
       days: days === '' ? null : Number(days) });
   }
 
-  return <section className="mt-6 border-t border-slate-200 pt-4">
+  return <section className="mt-6 border-t border-slate-800 pt-4">
     <h3 className="font-semibold">Fornecedores do produto</h3>
     {links.isPending && <p role="status">Carregando vínculos…</p>}
     {links.isError && <p role="alert">{links.error.message}</p>}
     {links.data?.items.length === 0 && <p>Nenhum fornecedor associado.</p>}
     <ul className="my-3 grid gap-2">{links.data?.items.map((link) =>
-      <li className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 p-2" key={link.id_fornecedor}>
+      <li className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-800 p-2" key={link.id_fornecedor}>
         <span>{link.razao_social} · {reais(link.preco_custo)} · {link.prazo_entrega_dias === null ? 'Sem prazo' : link.prazo_entrega_dias + ' dias'}</span>
         <button className={buttonClass} disabled={save.isPending} onClick={() => { save.reset(); setEditing(link); }}>Editar vínculo</button>
       </li>)}</ul>
@@ -54,7 +54,7 @@ export function ProductSuppliers({ id }: { id: number }) {
       <button className={buttonClass} disabled={save.isPending}>{save.isPending ? 'Salvando…' : editing ? 'Salvar vínculo' : 'Associar fornecedor'}</button>
       {editing && <button type="button" className={buttonClass} disabled={save.isPending} onClick={() => { setEditing(undefined); save.reset(); }}>Cancelar</button>}
     </form>
-    {save.isError && <p role="alert" className="text-red-800">{save.error.message}</p>}
-    {save.isSuccess && <p role="status" className="text-emerald-800">Vínculo salvo.</p>}
+    {save.isError && <p role="alert" className="text-red-300">{save.error.message}</p>}
+    {save.isSuccess && <p role="status" className="text-emerald-400">Vínculo salvo.</p>}
   </section>;
 }

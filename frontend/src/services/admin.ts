@@ -21,10 +21,8 @@ export async function optionsFor(path: string, signal: AbortSignal) {
   }
 }
 
-export function reais(value: string) {
-  const [whole, fraction = ''] = value.split('.');
-  return 'R$ ' + whole.replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ',' + fraction.padEnd(2, '0');
-}
+// Mantido por compatibilidade; a regra única está em services/format.
+export { reais } from './format';
 
 export function json(method: 'POST' | 'PATCH', body: object): RequestInit {
   return { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) };

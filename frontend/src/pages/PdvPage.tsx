@@ -1,3 +1,4 @@
+import { Badge } from '../components/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -59,8 +60,13 @@ export function PdvPage({ employee }: { employee: Employee }) {
   useEffect(focusScan, [sale?.id_venda]);
 
   const setSale = (next: Sale) => client.setQueryData<Active>(key, current => current && { ...current, venda: next.status === 'ABERTA' ? next : null });
-  const open = useMutation({ mutationFn: () => api<Sale>('vendas', json('POST', {})), onError,
-    onSuccess: next => { setSale(next); setNotice({ kind: 'ok', text: 'Venda #' + next.id_venda + ' iniciada.' }); } });
+  // Trava síncrona contra duplo clique; o servidor também recupera a venda aberta em vez de criar outra.
+  const opening = useRef(false);
+  const open = useMutation({ mutationFn: () => api<Sale & { recuperada?: boolean }>('vendas', json('POST', {})), onError,
+    onSettled: () => { opening.current = false; },
+    onSuccess: next => { setSale(next); setNotice({ kind: 'ok', text: next.recuperada
+      ? 'Venda #' + next.id_venda + ' já estava aberta nesta sessão e foi recuperada.' : 'Venda #' + next.id_venda + ' iniciada.' }); } });
+  const startSale = () => { if (opening.current || busy) return; opening.current = true; setParams({}); open.mutate(); };
   const lookup = useMutation({
     mutationFn: (barcode: string) => api<Product[]>('vendas/produtos?codigo_barras=' + encodeURIComponent(barcode)),
     onError: (error: Error) => { setFound(undefined); onError(error); },
@@ -121,27 +127,27 @@ export function PdvPage({ employee }: { employee: Employee }) {
   if (active.isPending) return <p className="p-8" role="status">Carregando PDV…</p>;
   if (active.isError) return <p className="p-8" role="alert">{active.error.message}</p>;
   return <section className="min-w-0 space-y-4 p-4 sm:p-6">
-    <header className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-slate-900 p-4 text-white">
-      <div><p className="text-xs uppercase tracking-wide text-slate-300">Supermercado Qualidade Líder</p>
+    <header className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-slate-950 p-4 text-white">
+      <div><p className="text-xs uppercase tracking-wide text-slate-400">Supermercado Qualidade Líder</p>
         <h1 className="text-xl font-bold">Frente de Caixa — PDV</h1></div>
       <dl className="grid grid-cols-2 gap-x-4 text-sm sm:grid-cols-5">
-        <div><dt className="text-slate-400">Terminal</dt><dd>{session ? session.numero_caixa : '—'}</dd></div>
-        <div><dt className="text-slate-400">Operador</dt><dd>{employee.matricula}</dd></div>
-        <div><dt className="text-slate-400">Sessão</dt><dd>{session ? '#' + session.id_sessao : '—'}</dd></div>
-        <div><dt className="text-slate-400">Venda</dt><dd>{sale ? '#' + sale.id_venda + ' · ' + sale.status : 'Nenhuma'}</dd></div>
-        <div className="col-span-2 sm:col-span-1"><dt className="text-slate-400">Data e hora</dt><dd><Clock /></dd></div>
+        <div><dt className="text-slate-500">Terminal</dt><dd>{session ? session.numero_caixa : '—'}</dd></div>
+        <div><dt className="text-slate-500">Operador</dt><dd>{employee.matricula}</dd></div>
+        <div><dt className="text-slate-500">Sessão</dt><dd>{session ? '#' + session.id_sessao : '—'}</dd></div>
+        <div><dt className="text-slate-500">Venda</dt><dd>{sale ? '#' + sale.id_venda + ' · ' + sale.status : 'Nenhuma'}</dd></div>
+        <div className="col-span-2 sm:col-span-1"><dt className="text-slate-500">Data e hora</dt><dd><Clock /></dd></div>
       </dl>
     </header>
 
-    {!session && <div role="alert" className="rounded border border-amber-300 bg-amber-50 p-4">
+    {!session && <div role="alert" className="rounded border border-amber-800 bg-amber-950/40 p-4">
       Nenhuma sessão de caixa aberta para você. <Link className="underline" to="/admin/sessoes-caixa">Abrir caixa</Link>
     </div>}
-    {session && !sale && <button className="rounded-lg bg-emerald-700 px-4 py-3 font-semibold text-white disabled:opacity-50" disabled={busy}
-      onClick={() => open.mutate()}>{open.isPending ? 'Iniciando…' : 'Nova venda'}</button>}
-    {notice && <p role={notice.kind === 'error' ? 'alert' : 'status'} className={'rounded px-3 py-2 ' + (notice.kind === 'error' ? 'bg-red-50 text-red-800' : 'bg-emerald-50 text-emerald-800')}>{notice.text}</p>}
+    {session && !sale && receiptId === undefined && <button className="rounded-lg bg-emerald-700 px-4 py-3 font-semibold text-white disabled:opacity-50" disabled={busy}
+      onClick={startSale}>{open.isPending ? 'Iniciando…' : 'Nova venda'}</button>}
+    {notice && <p role={notice.kind === 'error' ? 'alert' : 'status'} className={'rounded px-3 py-2 ' + (notice.kind === 'error' ? 'bg-red-950/40 text-red-300' : 'bg-emerald-950/50 text-emerald-400')}>{notice.text}</p>}
     {receiptId !== undefined && (receipt.isPending ? <p role="status">Carregando comprovante…</p>
       : receipt.isError ? <p role="alert">{receipt.error.message}</p>
-      : <ReceiptView receipt={receipt.data} onClose={() => setParams({})} />)}
+      : <ReceiptView receipt={receipt.data} onClose={() => setParams({})} onNewSale={session && !sale ? startSale : undefined} />)}
     {paying && sale && <PdvPayment saleId={sale.id_venda} onClose={() => { setPaying(false); focusScan(); }} onDone={done => {
       setPaying(false);
       client.setQueryData(['pdv', 'comprovante', done.id_venda], done);
@@ -152,7 +158,7 @@ export function PdvPage({ employee }: { employee: Employee }) {
     }} />}
 
     {session && !paying && receiptId === undefined && <div className="grid gap-4 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
-      <div className="space-y-3 rounded-xl border bg-white p-4">
+      <div className="space-y-3 rounded-xl border bg-slate-900 p-4">
         <h2 className="font-semibold">Produtos</h2>
         <form onSubmit={onScan} className="grid gap-2">
           <label className="grid gap-1 text-sm">Código de barras
@@ -162,17 +168,17 @@ export function PdvPage({ employee }: { employee: Employee }) {
         <label className="grid gap-1 text-sm">Pesquisar por nome
           <input type="search" className={inputClass} value={search} onChange={event => setSearch(event.target.value)} placeholder="Mínimo de 2 letras" /></label>
         {results.data && <ul className="max-h-48 overflow-y-auto rounded border text-sm">
-          {results.data.length === 0 && <li className="p-2 text-slate-600">Nenhum produto encontrado.</li>}
+          {results.data.length === 0 && <li className="p-2 text-slate-400">Nenhum produto encontrado.</li>}
           {results.data.map(product => <li key={product.id_produto}>
-            <button type="button" className="w-full p-2 text-left hover:bg-slate-100" onClick={() => { setFound(product); setSearch(''); }}>
+            <button type="button" className="w-full p-2 text-left hover:bg-slate-800" onClick={() => { setFound(product); setSearch(''); }}>
               {product.nome} · {reais(product.preco_venda)}/{product.unidade_medida}</button></li>)}
         </ul>}
-        {found && <div className="space-y-1 rounded border border-slate-200 bg-slate-50 p-3 text-sm">
+        {found && <div className="space-y-1 rounded border border-slate-800 bg-slate-950 p-3 text-sm">
           <p className="font-semibold">{found.nome}</p>
           <p>Código {found.codigo_barras} · Unidade {found.unidade_medida}</p>
           <p className="text-lg font-bold">{reais(found.preco_venda)} / {found.unidade_medida}</p>
           <p>Disponível para venda: {qty(found.disponivel, found.unidade_medida)} {found.unidade_medida}
-            {found.vencido !== '0.000' && <span className="text-amber-700"> · vencido: {qty(found.vencido, found.unidade_medida)}</span>}</p>
+            {found.vencido !== '0.000' && <span className="text-amber-300"> · vencido: {qty(found.vencido, found.unidade_medida)}</span>}</p>
         </div>}
         <div className="flex items-end gap-2">
           <label className="grid flex-1 gap-1 text-sm">Quantidade
@@ -180,21 +186,21 @@ export function PdvPage({ employee }: { employee: Employee }) {
           <button className="rounded-lg bg-emerald-700 px-4 py-2 font-semibold text-white disabled:opacity-50" disabled={!found || !sale || busy} onClick={addFound}>
             {add.isPending ? 'Adicionando…' : 'Adicionar'}</button>
         </div>
-        <p className="text-xs text-slate-500">A disponibilidade é uma verificação preliminar; o estoque só é baixado na finalização (Script 09).</p>
+        <p className="text-xs text-slate-400">A disponibilidade é uma verificação preliminar; o estoque só é baixado na finalização (Script 09).</p>
       </div>
 
-      <div className="min-w-0 space-y-3 rounded-xl border bg-white p-4">
+      <div className="min-w-0 space-y-3 rounded-xl border bg-slate-900 p-4">
         <h2 className="font-semibold">Carrinho {sale && '· Venda #' + sale.id_venda}</h2>
-        {!sale && <p className="text-slate-600">Inicie uma venda para registrar produtos.</p>}
-        {sale && sale.itens.length === 0 && <p className="text-slate-600">Nenhum item registrado.</p>}
+        {!sale && <p className="text-slate-400">Inicie uma venda para registrar produtos.</p>}
+        {sale && sale.itens.length === 0 && <p className="text-slate-400">Nenhum item registrado.</p>}
         {sale && sale.itens.length > 0 && <ul className="divide-y">{sale.itens.map(item => {
           const cancelled = item.situacao === 'CANCELADO';
-          return <li key={item.id_item_venda} className={'grid gap-1 py-2 text-sm xl:grid-cols-[minmax(0,1fr)_auto] ' +(cancelled ? 'text-slate-400' : '')}>
+          return <li key={item.id_item_venda} className={'grid gap-1 py-2 text-sm xl:grid-cols-[minmax(0,1fr)_auto] ' +(cancelled ? 'text-slate-500' : '')}>
             <div className="min-w-0">
               <p className={'font-medium ' + (cancelled ? 'line-through' : '')}>{item.nome}</p>
               <p className="break-all text-xs">{item.codigo_barras}</p>
               <p>{qty(item.quantidade, item.unidade_medida)} {item.unidade_medida} × {reais(item.preco_unitario)} = <strong>{reais(item.subtotal ?? '0.00')}</strong></p>
-              <p className={'text-xs font-semibold ' + (cancelled ? 'text-red-700' : 'text-emerald-700')}>{item.situacao}
+              <p className="flex flex-wrap items-center gap-1 text-xs"><Badge status={cancelled ? 'CANCELADO' : 'ATIVO'} />
                 {item.cancelamento && ' · autorizado por ' + item.cancelamento.supervisor + ' · ' + item.cancelamento.motivo}</p>
             </div>
             {!cancelled && <div className="flex flex-wrap items-start gap-2">
@@ -204,7 +210,7 @@ export function PdvPage({ employee }: { employee: Employee }) {
           </li>;
         })}</ul>}
         {sale && <div className="flex flex-wrap items-end justify-between gap-3 border-t pt-3">
-          <div><p className="text-sm text-slate-600">{sale.itens_ativos} item(ns) ativo(s) · {sale.status}</p>
+          <div><p className="text-sm text-slate-400">{sale.itens_ativos} item(ns) ativo(s) · {sale.status}</p>
             <p className="text-3xl font-bold" aria-live="polite">{reais(sale.valor_total)}</p></div>
           <div className="flex flex-wrap gap-2">
             <button className={buttonClass} disabled={busy} onClick={() => setConfirmSale(true)}>Cancelar venda</button>
@@ -216,7 +222,7 @@ export function PdvPage({ employee }: { employee: Employee }) {
     </div>}
 
     {editing && <dialog ref={node => { if (node && !node.open) node.showModal(); }} onCancel={() => setEditing(undefined)}
-      className="fixed inset-0 m-auto w-[min(90vw,24rem)] rounded-xl bg-white p-5 shadow-xl backdrop:bg-black/40">
+      className="fixed inset-0 m-auto w-[min(90vw,24rem)] rounded-xl bg-slate-900 p-5 shadow-xl backdrop:bg-black/70">
       <form className="grid gap-3" onSubmit={event => { event.preventDefault(); const value = normalize(editing.value);
         if (!validQty(value, editing.item.unidade_medida)) { setNotice({ kind: 'error', text: 'Quantidade inválida para a unidade ' + editing.item.unidade_medida + '.' }); return; }
         edit.mutate({ item: editing.item, value }); }}>
@@ -228,7 +234,7 @@ export function PdvPage({ employee }: { employee: Employee }) {
     </dialog>}
 
     {cancelling && <dialog ref={node => { if (node && !node.open) node.showModal(); }} onCancel={event => { event.preventDefault(); if (!cancelItem.isPending) setCancelling(undefined); }}
-      className="fixed inset-0 m-auto w-[min(90vw,26rem)] rounded-xl bg-white p-5 shadow-xl backdrop:bg-black/40">
+      className="fixed inset-0 m-auto w-[min(90vw,26rem)] rounded-xl bg-slate-900 p-5 shadow-xl backdrop:bg-black/70">
       <form className="grid gap-3" onSubmit={event => { event.preventDefault(); const form = new FormData(event.currentTarget);
         cancelItem.mutate({ item: cancelling, motivo: String(form.get('motivo')), matricula: String(form.get('matricula')), senha: String(form.get('senha')) });
         event.currentTarget.reset(); }}>
@@ -236,17 +242,17 @@ export function PdvPage({ employee }: { employee: Employee }) {
         <label className="grid gap-1 text-sm">Motivo <select name="motivo" required className={inputClass}>
           {['Cliente desistiu', 'Registro em duplicidade', 'Produto avariado', 'Preço divergente'].map(reason => <option key={reason}>{reason}</option>)}
         </select></label>
-        <p className="text-sm text-slate-600">Autorização de supervisor (outra pessoa com permissão de cancelar itens):</p>
+        <p className="text-sm text-slate-400">Autorização de supervisor (outra pessoa com permissão de cancelar itens):</p>
         <label className="grid gap-1 text-sm">Matrícula do supervisor <input name="matricula" required autoComplete="off" className={inputClass} /></label>
         <label className="grid gap-1 text-sm">Senha do supervisor <input name="senha" type="password" required autoComplete="off" className={inputClass} /></label>
-        {cancelItem.isError && <p role="alert" className="text-red-800">{cancelItem.error.message}</p>}
+        {cancelItem.isError && <p role="alert" className="text-red-300">{cancelItem.error.message}</p>}
         <div className="flex gap-2"><button type="button" className={buttonClass} disabled={cancelItem.isPending} onClick={() => setCancelling(undefined)}>Voltar</button>
           <button className={buttonClass} disabled={cancelItem.isPending}>{cancelItem.isPending ? 'Autorizando…' : 'Autorizar cancelamento'}</button></div>
       </form>
     </dialog>}
 
     {confirmSale && sale && <dialog ref={node => { if (node && !node.open) node.showModal(); }} onCancel={() => setConfirmSale(false)}
-      className="fixed inset-0 m-auto w-[min(90vw,24rem)] rounded-xl bg-white p-5 shadow-xl backdrop:bg-black/40">
+      className="fixed inset-0 m-auto w-[min(90vw,24rem)] rounded-xl bg-slate-900 p-5 shadow-xl backdrop:bg-black/70">
       <h2 className="font-semibold">Cancelar a venda #{sale.id_venda}?</h2>
       <p className="mt-2 text-sm">Os itens permanecem registrados para auditoria. Esta confirmação não é armazenada como justificativa.</p>
       <div className="mt-3 flex gap-2"><button className={buttonClass} onClick={() => setConfirmSale(false)}>Voltar</button>

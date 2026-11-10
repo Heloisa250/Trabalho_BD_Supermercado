@@ -1,3 +1,4 @@
+import { dateTime } from '../services/format';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
@@ -16,7 +17,8 @@ type Detail = Session & {
 type Terminal = { id_caixa: number; numero: number; descricao: string | null; disponivel: number };
 const endpoint = 'sessoes-caixa';
 const queryKey = ['admin',endpoint];
-const date = (value: string | null) => value ? value.slice(0,10).split('-').reverse().join('/') + ' ' + value.slice(11) : '—';
+// Abertura e fechamento são DATETIME gravados em UTC: exibidos em America/Sao_Paulo.
+const date = (value: string | null) => dateTime(value);
 function difference(value: string, expected: string) {
   if (!/^\d{1,8}(?:\.\d{1,2})?$/.test(value)) return null;
   function cents(decimal: string) {
@@ -73,7 +75,7 @@ export function CashSessionsPage({ employee, admin }: { employee: Employee; admi
     <h1 className="text-2xl font-bold">Sessões de Caixa</h1>
     <button className={buttonClass} disabled={!active.isSuccess || !!active.data || !terminals.data?.some(t=>t.disponivel)} onClick={()=>start('open')}>Abrir caixa</button>
     {notice && <p role="status">{notice}</p>}
-    {active.data && <section className="rounded border bg-white p-3">
+    {active.data && <section className="rounded border bg-slate-900 p-3">
       <h2 className="font-semibold">Sessão ativa #{active.data.id_sessao}</h2>
       <p>Terminal {active.data.numero} · {active.data.operador} · {date(active.data.data_abertura)} · {reais(active.data.fundo_troco)} · ABERTA</p>
       <button className={buttonClass} onClick={()=>setSelected(active.data!.id_sessao)}>Conferir sessão ativa</button>
@@ -99,7 +101,7 @@ export function CashSessionsPage({ employee, admin }: { employee: Employee; admi
     {(list.isPending || active.isPending) && <p role="status">Carregando sessões…</p>}
     {(list.isError || active.isError || terminals.isError || detail.isError) && <p role="alert">{list.error?.message ?? active.error?.message ?? terminals.error?.message ?? detail.error?.message}</p>}
     {list.data?.items.length === 0 && <p>Nenhuma sessão encontrada.</p>}
-    {!!list.data?.items.length && <div className="overflow-x-auto rounded border bg-white"><table className="w-full text-left text-sm">
+    {!!list.data?.items.length && <div className="overflow-x-auto rounded border bg-slate-900"><table className="w-full text-left text-sm">
       <thead><tr>{['Sessão','Terminal','Operador','Abertura','Fechamento','Fundo','Contado','Situação','Ações'].map(label=><th key={label} className="p-2">{label}</th>)}</tr></thead>
       <tbody>{list.data.items.map(row=><tr key={row.id_sessao} className="border-t">
         {[row.id_sessao,row.numero,row.operador,date(row.data_abertura),date(row.data_fechamento),reais(row.fundo_troco),
@@ -112,7 +114,7 @@ export function CashSessionsPage({ employee, admin }: { employee: Employee; admi
       <span>Página {list.data.pagina}</span><button className={buttonClass} disabled={!list.data.mais} onClick={()=>page(list.data!.pagina+1)}>Próxima</button>
     </nav>}
     {selected !== undefined && detail.isPending && <p role="status">Carregando conferência…</p>}
-    {current && <section className="space-y-2 rounded border bg-white p-3">
+    {current && <section className="space-y-2 rounded border bg-slate-900 p-3">
       <h2 className="font-semibold">Sessão #{current.id_sessao} · {current.situacao}</h2>
       <p>Terminal {current.numero} · {current.operador} · {date(current.data_abertura)}</p>
       <p>Fundo {reais(current.fundo_troco)} · Dinheiro {reais(current.recebido_dinheiro)} · Esperado {reais(current.valor_esperado)}</p>
@@ -125,7 +127,7 @@ export function CashSessionsPage({ employee, admin }: { employee: Employee; admi
     {action && <dialog ref={node=>{if(node && !node.open) node.showModal();}} onCancel={event=>{
       event.preventDefault();
       if (!save.isPending) setAction(undefined);
-    }} className="fixed inset-0 m-auto w-[min(90vw,32rem)] rounded-xl bg-white p-5 shadow-xl backdrop:bg-black/40">
+    }} className="fixed inset-0 m-auto w-[min(90vw,32rem)] rounded-xl bg-slate-900 p-5 shadow-xl backdrop:bg-black/70">
       <form className="grid gap-3" onSubmit={submit}>
         <h2 className="font-semibold">{action === 'open' ? 'Abrir caixa' : 'Fechar caixa'}</h2>
         <p>Operador {employee.nome}</p>

@@ -72,7 +72,8 @@ export function salesRoutes(pool: Pool | undefined, auth: AuthService, csrf: Req
   router.get('/produtos', async (req, res) => { res.json(await service().lookup(parse(lookup, req.query))); });
   router.post('/', csrf, async (req, res) => {
     parse(empty, req.body ?? {});
-    res.status(201).json(await service().open(me(res)));
+    const sale = await service().open(me(res));
+    res.status(sale.recuperada ? 200 : 201).json(sale);
   });
   router.get('/:id', async (req, res) => { res.json(await service().detail(parse(id, req.params.id), me(res))); });
   router.get('/:id/itens', async (req, res) => { res.json(await service().items(parse(id, req.params.id), me(res))); });

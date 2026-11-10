@@ -29,10 +29,13 @@ test('abertura de venda: sessão real do JWT, ID explícito, uma ABERTA por sess
   state.sessions.get(5)!.data_fechamento = '2026-11-10 14:00:00';
   await rejects(service.open(1), 409, 'NO_OPEN_SESSION');
   state.sessions.get(5)!.data_fechamento = null;
-  const results = await Promise.allSettled([service.open(1), service.open(1), service.open(1)]);
-  const ok = results.filter(r => r.status === 'fulfilled');
-  assert.equal(ok.length, 1);
-  const sale = (ok[0] as PromiseFulfilledResult<Awaited<ReturnType<typeof service.open>>>).value;
+  // Três pedidos simultâneos (duplo clique/reenvio): uma única venda é criada; os demais recuperam a mesma.
+  const before = state.sales.size;
+  const results = await Promise.all([service.open(1), service.open(1), service.open(1)]);
+  assert.equal(state.sales.size, before + 1);
+  assert.deepEqual(results.map(r => r.id_venda), [6, 6, 6]);
+  assert.deepEqual(results.map(r => r.recuperada).sort(), [false, true, true]);
+  const sale = results.find(r => !r.recuperada)!;
   assert.equal(sale.id_venda, 6);
   assert.equal(sale.id_sessao, 5);
   assert.equal(sale.status, 'ABERTA');
@@ -197,4 +200,21 @@ test('rotas do PDV: autenticação, CSRF, schemas estritos e injeção', async c
   assert.equal((await call('/produtos?busca=a')).status, 400);
   assert.equal(queries.length, 0); // nada chegou ao banco
   assert.equal((await call('/ativa')).status, 200); // sem sessão aberta no fake
+});
+
+test('abertura repetida recupera a venda aberta existente (duplo clique, F5, reenvio)', async () => {
+  const { state, service } = fakeDatabase();
+  const first = await service.open(1);
+  assert.equal(first.recuperada, false);
+  await service.addItem(first.id_venda, 1, { id_produto: 1, quantidade: '2' });
+  const again = await service.open(1); // ex.: botão clicado de novo após F5
+  assert.equal(again.recuperada, true);
+  assert.equal(again.id_venda, first.id_venda);
+  assert.equal(again.itens.length, 1); // carrinho preservado
+  assert.equal([...state.sales.values()].filter(s => s.id_sessao === 5).length, 1);
+  assert.equal((await service.active(1)).venda?.id_venda, first.id_venda); // recuperação após atualizar a página
+  await service.cancelSale(first.id_venda, 1);
+  const next = await service.open(1); // sem venda aberta, cria uma nova
+  assert.equal(next.recuperada, false);
+  assert.notEqual(next.id_venda, first.id_venda);
 });

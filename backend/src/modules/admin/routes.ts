@@ -11,6 +11,7 @@ import { adminService } from './service.js';
 import { stockRoutes } from '../stock/routes.js';
 import { cashRoutes } from '../cash/routes.js';
 import { salesRoutes } from '../sales/routes.js';
+import { dashboardRoutes } from '../dashboard/routes.js';
 
 export function canAdminister(matricula: string, admins: readonly string[]) {
   return admins.includes(matricula);
@@ -57,6 +58,8 @@ export function adminRoutes(auth: AuthService, pool: Pool | undefined, admins: r
   if (official) router.use(stockRoutes(pool, session, requireAdmin, csrf), adminErrors);
   if (official) router.use('/sessoes-caixa', session, cashRoutes(pool, csrf, matricula => canAdminister(matricula,admins)), adminErrors);
   if (official) router.use('/vendas', session, salesRoutes(pool, auth, csrf), adminErrors);
+  // Script 10: relatórios somente leitura, restritos à lista administrativa (ADMIN_MATRICULAS).
+  if (official) router.use('/dashboard', session, requireAdmin, dashboardRoutes(pool), adminErrors);
   router.use('/pedidos-compra', session, requireAdmin, purchaseRoutes(pool, csrf, official), adminErrors);
   const resources: Resource[] = ['funcionarios', 'cargos', 'caixas', 'formas-pagamento', 'categorias', 'marcas', 'produtos', 'fornecedores'];
   for (const resource of resources) {

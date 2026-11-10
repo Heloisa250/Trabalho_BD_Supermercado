@@ -2,6 +2,7 @@ import { Router, type RequestHandler } from 'express';
 import type { Pool, PoolConnection, RowDataPacket } from 'mysql2/promise';
 import { z } from 'zod';
 import { nextExplicitId, transaction } from '../../config/mysql-transaction.js';
+import { sqlBusinessDate } from '../../config/business-time.js';
 import { parse } from '../admin/controller.js';
 import { AdminError } from '../admin/error.js';
 import { id, money } from '../admin/schemas.js';
@@ -96,7 +97,7 @@ export function cashRoutes(pool: Pool | undefined, csrf: RequestHandler, isAdmin
     const operator = res.locals.employee.id;
     const saved = await transaction(db(),async conn => {
       const [employee] = await rows(conn,`SELECT id_funcionario FROM funcionario WHERE id_funcionario=? AND ativo=1
-        AND (data_demissao IS NULL OR data_demissao>CURRENT_DATE) FOR UPDATE`,[operator]);
+        AND (data_demissao IS NULL OR data_demissao>${sqlBusinessDate()}) FOR UPDATE`,[operator]);
       if (!employee) throw new AdminError(403,'INACTIVE_OPERATOR','Operador indisponível.');
       const [terminal] = await rows(conn,'SELECT ativo FROM caixa WHERE id_caixa=? FOR UPDATE',[input.id_caixa]);
       if (!terminal) throw new AdminError(404,'NOT_FOUND','Terminal não encontrado.');

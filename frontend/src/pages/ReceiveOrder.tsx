@@ -48,7 +48,7 @@ export function ReceiveOrder({ order, items, close, received }: { order: number;
   return <dialog ref={node => { if (node && !node.open) node.showModal(); }} onCancel={event => {
     event.preventDefault();
     if (!save.isPending) close();
-  }} className="fixed inset-0 m-auto max-h-[90vh] w-[min(94vw,48rem)] overflow-auto rounded-xl bg-white p-5 shadow-xl backdrop:bg-black/40">
+  }} className="fixed inset-0 m-auto max-h-[90vh] w-[min(94vw,48rem)] overflow-auto rounded-xl bg-slate-900 p-5 shadow-xl backdrop:bg-black/70">
     <form className="grid gap-4" onSubmit={submit} onInput={() => setDateError('')}>
       <h2 className="text-lg font-bold">Receber mercadorias · Pedido #{order}</h2>
       <p>Informe os lotes até completar a quantidade de cada item.</p>

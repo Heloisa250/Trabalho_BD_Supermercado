@@ -6,20 +6,24 @@
     "dev": "vite",
     "dev:official": "vite --mode official --host 127.0.0.1",
     "build": "tsc --noEmit && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "tsx --test src/**/*.test.ts"
   },
   "dependencies": {
+    "@fontsource/dancing-script": "^5.1.1",
+    "@tanstack/react-query": "^5.80.0",
+    "lucide-react": "^0.468.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-router-dom": "^7.6.0",
-    "@tanstack/react-query": "^5.80.0"
+    "recharts": "^3.2.1"
   },
   "devDependencies": {
-    "vite": "^7.0.0",
-    "@vitejs/plugin-react": "^5.0.0",
-    "tailwindcss": "^4.1.0",
     "@tailwindcss/vite": "^4.1.0",
     "@types/react": "^19.1.0",
-    "@types/react-dom": "^19.1.0"
+    "@types/react-dom": "^19.1.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "tailwindcss": "^4.1.0",
+    "vite": "^7.0.0"
   }
 }

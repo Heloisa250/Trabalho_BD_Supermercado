@@ -2,6 +2,7 @@ import { Router, type RequestHandler } from 'express';
 import type { Pool, PoolConnection, RowDataPacket } from 'mysql2/promise';
 import { z } from 'zod';
 import { nextExplicitId, transaction } from '../../config/mysql-transaction.js';
+import { sqlBusinessDate } from '../../config/business-time.js';
 import { parse } from '../admin/controller.js';
 import { AdminError } from '../admin/error.js';
 import { id, money } from '../admin/schemas.js';
@@ -90,7 +91,7 @@ export function stockRoutes(pool: Pool | undefined, session: RequestHandler, adm
     const order = parse(id, req.params.id);
     const { lotes } = parse(receipt, req.body);
     const result = await write(async conn => {
-      const [current] = await rows(conn, 'SELECT status,data_recebimento,CURRENT_DATE AS hoje FROM pedido_compra WHERE id_pedido=? FOR UPDATE', [order]);
+      const [current] = await rows(conn, 'SELECT status,data_recebimento,' + sqlBusinessDate() + ' AS hoje FROM pedido_compra WHERE id_pedido=? FOR UPDATE', [order]);
       if (!current) throw new AdminError(404, 'NOT_FOUND', 'Pedido não encontrado.');
       if (current.status !== 'ENVIADO' || current.data_recebimento !== null ||
           (await rows(conn, 'SELECT id_lote FROM lote WHERE id_pedido=? LIMIT 1 FOR SHARE', [order])).length) {
@@ -122,7 +123,7 @@ export function stockRoutes(pool: Pool | undefined, session: RequestHandler, adm
   router.post('/estoque/entradas', csrf, async (req, res) => {
     const data = parse(entry, req.body);
     res.status(201).json(await write(async conn => {
-      const [product] = await rows(conn, 'SELECT CURRENT_DATE AS hoje FROM produto WHERE id_produto=? FOR SHARE', [data.id_produto]);
+      const [product] = await rows(conn, 'SELECT ' + sqlBusinessDate() + ' AS hoje FROM produto WHERE id_produto=? FOR SHARE', [data.id_produto]);
       if (!product) throw new AdminError(404, 'NOT_FOUND', 'Produto não encontrado.');
       await validateLot(conn, data, product.hoje);
       return insertLot(conn, data, null, data.custo_unitario, res.locals.employee.id);
@@ -150,9 +151,10 @@ export function stockRoutes(pool: Pool | undefined, session: RequestHandler, adm
   router.get(['/lotes', '/produtos/:id/lotes'], async (req, res) => {
     const data = parse(lotsFilter, req.query);
     const product = req.params.id === undefined ? data.produto : parse(id, req.params.id);
+    const today = sqlBusinessDate();
     const validity = {
-      vencido: 'l.data_validade<CURRENT_DATE',
-      proximo: 'l.data_validade BETWEEN CURRENT_DATE AND DATE_ADD(CURRENT_DATE, INTERVAL ? DAY)',
+      vencido: 'l.data_validade<' + today,
+      proximo: 'l.data_validade BETWEEN ' + today + ' AND DATE_ADD(' + today + ', INTERVAL ? DAY)',
       sem: 'l.data_validade IS NULL',
     };
     res.json(await page(lotSelect + ' WHERE (? IS NULL OR l.id_produto=?) AND (LOCATE(?,p.nome)>0 OR LOCATE(?,l.codigo_lote)>0)' +
@@ -166,6 +168,7 @@ export function stockRoutes(pool: Pool | undefined, session: RequestHandler, adm
   });
   router.get('/estoque', async (req, res) => {
     const data = parse(stockFilter, req.query);
+    const today = sqlBusinessDate();
     res.json(await page(`SELECT * FROM (
       SELECT p.id_produto,p.nome,p.codigo_barras,c.nome AS categoria,p.unidade_medida,p.ativo,p.estoque_minimo,p.estoque_maximo,
       COALESCE(s.fisico,0) AS fisico, COALESCE(s.vencido,0) AS vencido,
@@ -174,9 +177,9 @@ export function stockRoutes(pool: Pool | undefined, session: RequestHandler, adm
            WHEN COALESCE(s.fisico,0)>p.estoque_maximo THEN 'alto' ELSE 'normal' END AS faixa
       FROM produto p JOIN categoria c USING(id_categoria) LEFT JOIN (
         SELECT id_produto,COUNT(*) AS lotes,SUM(quantidade_atual) AS fisico,
-          SUM(IF(data_validade<CURRENT_DATE,quantidade_atual,0)) AS vencido,
-          SUM(IF(data_validade IS NULL OR data_validade>=CURRENT_DATE,quantidade_atual,0)) AS disponivel,
-          SUM(IF(data_validade BETWEEN CURRENT_DATE AND DATE_ADD(CURRENT_DATE,INTERVAL ? DAY),quantidade_atual,0)) AS proximo
+          SUM(IF(data_validade<${today},quantidade_atual,0)) AS vencido,
+          SUM(IF(data_validade IS NULL OR data_validade>=${today},quantidade_atual,0)) AS disponivel,
+          SUM(IF(data_validade BETWEEN ${today} AND DATE_ADD(${today},INTERVAL ? DAY),quantidade_atual,0)) AS proximo
         FROM lote GROUP BY id_produto
       ) s USING(id_produto)
       WHERE (? IS NULL OR p.id_produto=?) AND (LOCATE(?,p.nome)>0 OR LOCATE(?,p.codigo_barras)>0)

@@ -1,3 +1,5 @@
+import { anyDate } from '../services/format';
+import { Badge } from '../components/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
@@ -18,9 +20,8 @@ const endpoint = 'pedidos-compra';
 const editable = import.meta.env.MODE === 'official' ? 'PENDENTE' : 'ABERTO';
 const states = [editable, 'ENVIADO', 'CANCELADO', 'RECEBIDO'];
 
-function date(value?: string | null) {
-  return value ? value.slice(0, 10).split('-').reverse().join('/') : '—';
-}
+// data_pedido/data_recebimento são DATETIME (UTC → Brasília); data_prevista é DATE (sem fuso).
+const date = (value?: string | null) => anyDate(value);
 function fixed(value: string, scale: number) {
   const [whole, fraction = ''] = value.split('.');
   return BigInt(whole + fraction.padEnd(scale, '0'));
@@ -60,7 +61,7 @@ function ItemForm({ supplier, editing, onSave, busy }: {
       unidade_medida: candidate.unidade_medida, quantidade: q, custo_unitario: c, subtotal });
     if (!editing) { setSelected(undefined); setCost(''); setQuantity('1'); }
   }
-  return <form className="grid gap-3 rounded-lg border border-slate-200 bg-white p-4 sm:grid-cols-2" onSubmit={submit}>
+  return <form className="grid gap-3 rounded-lg border border-slate-800 bg-slate-900 p-4 sm:grid-cols-2" onSubmit={submit}>
     {editing ? <p className="font-semibold sm:col-span-2">Editar {editing.nome}</p> : <>
       <label className="grid gap-1 text-sm">Pesquisar produtos do fornecedor
         <input className={inputClass} value={search} maxLength={120} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
@@ -95,9 +96,9 @@ function ItemForm({ supplier, editing, onSave, busy }: {
 function Lines({ lines, onEdit }: { lines: Line[]; onEdit?: (line: Line) => void }) {
   if (!lines.length) return <p>Nenhum item no pedido.</p>;
   return <div className="overflow-x-auto"><table className="w-full text-left text-sm">
-    <thead className="bg-slate-100"><tr>{['Produto', 'Código', 'Quantidade', 'Unidade', 'Custo', 'Subtotal', ...(onEdit ? ['Ação'] : [])]
+    <thead className="bg-slate-800"><tr>{['Produto', 'Código', 'Quantidade', 'Unidade', 'Custo', 'Subtotal', ...(onEdit ? ['Ação'] : [])]
       .map((label) => <th key={label} className="p-2">{label}</th>)}</tr></thead>
-    <tbody>{lines.map((line) => <tr key={line.id_produto} className="border-b border-slate-200">
+    <tbody>{lines.map((line) => <tr key={line.id_produto} className="border-b border-slate-800">
       {[line.nome, line.codigo_barras, quantityLabel(line.quantidade), line.unidade_medida, reais(line.custo_unitario), reais(line.subtotal)]
         .map((value, i) => <td key={i} className="p-2">{value}</td>)}
       {onEdit && <td className="p-2"><button className={buttonClass} onClick={() => onEdit(line)}>Editar</button></td>}
@@ -192,12 +193,12 @@ export function PurchasesPage({ employee }: { employee: Employee }) {
     {orders.isError && <p role="alert">{orders.error.message}</p>}
     {vendors.isError && <p role="alert">{vendors.error.message}</p>}
     {orders.data?.items.length === 0 && <p>Nenhum pedido encontrado.</p>}
-    {!!orders.data?.items.length && <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white"><table className="w-full text-left text-sm">
-      <thead className="bg-slate-100"><tr>{['Pedido', 'Fornecedor', 'Responsável', 'Criação', 'Previsão', 'Status', 'Itens', 'Total', 'Ação']
+    {!!orders.data?.items.length && <div className="overflow-x-auto rounded-lg border border-slate-800 bg-slate-900"><table className="w-full text-left text-sm">
+      <thead className="bg-slate-800"><tr>{['Pedido', 'Fornecedor', 'Responsável', 'Criação', 'Previsão', 'Status', 'Itens', 'Total', 'Ação']
         .map((label) => <th key={label} className="p-2">{label}</th>)}</tr></thead>
-      <tbody>{orders.data.items.map((row) => <tr key={row.id_pedido} className="border-t border-slate-200">
-        {[row.id_pedido, row.fornecedor, row.funcionario, date(row.data_pedido), date(row.data_prevista), row.status, row.quantidade_itens, reais(row.total_estimado)]
-          .map((value, i) => <td key={i} className="p-2">{i === 5 ? <span className="rounded-full bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-900">{value}</span> : value}</td>)}
+      <tbody>{orders.data.items.map((row) => <tr key={row.id_pedido} className="border-t border-slate-800">
+        {[row.id_pedido, row.fornecedor, row.funcionario, date(row.data_pedido), date(row.data_prevista), <Badge status={row.status} />, row.quantidade_itens, reais(row.total_estimado)]
+          .map((value, i) => <td key={i} className="p-2">{i === 5 ? <span className="rounded-full bg-emerald-900/40 px-2 py-1 text-xs font-semibold text-emerald-300">{value}</span> : value}</td>)}
         <td className="p-2"><button className={buttonClass} disabled={save.isPending} onClick={() => selectOrder(row.id_pedido)}>Detalhes</button></td>
       </tr>)}</tbody>
     </table></div>}
@@ -208,14 +209,14 @@ export function PurchasesPage({ employee }: { employee: Employee }) {
     </nav>}
     {selected !== undefined && (order.isPending || items.isPending) && <p role="status">Carregando detalhes…</p>}
     {selected !== undefined && (order.isError || items.isError) && <p role="alert">{order.error?.message ?? items.error?.message}</p>}
-    {(creating || order.data) && <section className="mt-6 grid gap-4 rounded-xl border border-slate-200 bg-white p-4">
+    {(creating || order.data) && <section className="mt-6 grid gap-4 rounded-xl border border-slate-800 bg-slate-900 p-4">
       <div className="flex justify-between gap-3"><h2 className="text-xl font-semibold">{creating ? 'Novo pedido' : 'Pedido #' + selected}</h2>
         <button className={buttonClass} disabled={save.isPending} onClick={() => selectOrder()}>Fechar</button></div>
-      {notice && <p role="status" className="text-emerald-800">{notice}</p>}
-      {save.isError && <p role="alert" className="text-red-800">{save.error.message}</p>}
+      {notice && <p role="status" className="text-emerald-400">{notice}</p>}
+      {save.isError && <p role="alert" className="text-red-300">{save.error.message}</p>}
       <p>Responsável: {creating ? employee.nome : order.data?.funcionario}</p>
-      {order.data && <p>Fornecedor: {order.data.fornecedor} · Criado em {date(order.data.data_pedido)} · {order.data.status}</p>}
-      {order.data?.data_recebimento && <p>Recebido em {date(order.data.data_recebimento)} {order.data.data_recebimento.slice(11)}</p>}
+      {order.data && <p>Fornecedor: {order.data.fornecedor} · Criado em {date(order.data.data_pedido)} · <Badge status={order.data.status} /></p>}
+      {order.data?.data_recebimento && <p>Recebido em {date(order.data.data_recebimento)}</p>}
       {(creating || order.data?.status === editable) ? <form key={creating ? 'new' : selected} onSubmit={saveOrder}
         id="purchase-header" className="grid gap-3 sm:grid-cols-2">
         {(creating || order.data?.quantidade_itens === 0) && <label className="grid gap-1 text-sm">Fornecedor
@@ -240,7 +241,7 @@ export function PurchasesPage({ employee }: { employee: Employee }) {
       </>}
       {order.data && items.data && <>
         <Lines lines={items.data} onEdit={order.data.status === editable ? setEditing : undefined} />
-        {order.data.status === editable && <p className="text-sm text-slate-600">Itens gravados podem ser editados enquanto o pedido estiver pendente. A remoção individual não está disponível.</p>}
+        {order.data.status === editable && <p className="text-sm text-slate-400">Itens gravados podem ser editados enquanto o pedido estiver pendente. A remoção individual não está disponível.</p>}
         <p>{order.data.quantidade_itens} itens · Total estimado {reais(order.data.total_estimado)}</p>
         {order.data.status === editable && <ItemForm key={selected + ':' + (editing?.id_produto ?? '')} supplier={order.data.id_fornecedor}
           editing={editing} busy={save.isPending} onSave={({ id_produto, quantidade, custo_unitario }) => {
@@ -262,7 +263,7 @@ export function PurchasesPage({ employee }: { employee: Employee }) {
       close={() => setReceiving(false)} received={() => { setReceiving(false); setNotice('Recebimento registrado.'); }} />}
     {confirm && <dialog ref={(node) => { if (node && !node.open) node.showModal(); }}
       onCancel={(event) => { event.preventDefault(); if (!save.isPending) setConfirm(undefined); }}
-      className="fixed inset-0 m-auto w-[min(90vw,28rem)] rounded-xl bg-white p-6 shadow-xl backdrop:bg-black/40">
+      className="fixed inset-0 m-auto w-[min(90vw,28rem)] rounded-xl bg-slate-900 p-6 shadow-xl backdrop:bg-black/70">
       <h2 className="font-semibold">{confirm === 'enviar' ? 'Enviar este pedido?' : 'Cancelar este pedido?'}</h2>
       {save.isError && <p role="alert">{save.error.message}</p>}
       <div className="mt-4 flex gap-2"><button className={buttonClass} disabled={save.isPending} onClick={() => setConfirm(undefined)}>Voltar</button>
