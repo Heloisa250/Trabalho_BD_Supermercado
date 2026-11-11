@@ -38,6 +38,36 @@ Compare as 19 tabelas visíveis com [o inventário do SQL](docs/analise-banco.md
 `npm test` verifica os contratos HTTP com um diagnóstico de banco substituível. `npm run build` compila os dois workspaces. `npm start` inicia o backend compilado.
 
 
+## Como acessar o sistema — Credenciais acadêmicas
+
+Clone a branch `codex/aplicacao-r02` do [repositório Trabalho_BD_Supermercado](https://github.com/Heloisa250/Trabalho_BD_Supermercado). Instale Node.js 22.12 ou superior, MySQL Community Server 8.4 e MySQL Workbench. Use uma instância local do MySQL separada do banco pessoal. No Workbench, conecte-se a essa instância e execute os arquivos inteiros, nesta ordem:
+
+1. [Supermercado_ddl.sql](database/official/Supermercado_ddl.sql)
+2. [Supermercado_dml.sql](database/official/Supermercado_dml.sql)
+3. [credenciais_demo.sql](credenciais_demo.sql)
+
+Execute o terceiro arquivo em uma conexão nova e confira o resultado no Workbench. Ele atualiza somente as senhas de F0001 e F0002. Se alguma matrícula estiver ausente ou duplicada, o resultado informa o rollback.
+
+| Perfil | Matrícula | Senha |
+| --- | --- | --- |
+| Administrador | F0001 | 001 |
+| Supervisora | F0002 | 002 |
+
+As senhas são públicas e destinadas à apresentação acadêmica local. F0001 é Gerente no DML oficial e recebe acesso administrativo via `ADMIN_MATRICULAS=F0001`. F0002 mantém o cadastro de Carlos Eduardo Ribeiro, Supervisor de Caixa, com autorização para cancelar itens e sem acesso administrativo.
+
+Copie `backend/.env.official.example` para `backend/.env.official` no clone acadêmico. Configure `DB_HOST` e `DB_PORT` para a instância local (normalmente `127.0.0.1` e `3306`), `DB_USER` e `DB_PASSWORD` para uma conta técnica dedicada, `JWT_SECRET` com um valor aleatório de pelo menos 32 caracteres e `ADMIN_MATRICULAS=F0001`. Mantenha a API em `3002` e a origem do React em `http://127.0.0.1:5176`. A conta técnica precisa de leitura para login e consulta. Para operações de escrita, aplique as concessões do módulo correspondente.
+
+Na raiz do projeto, execute `npm ci`. Em dois terminais, execute:
+
+```sh
+npm run dev -w backend -- --official
+npm run dev:official -w frontend
+```
+
+Abra [a interface acadêmica](http://127.0.0.1:5176/) e entre com uma das contas da tabela.
+
+O [guia do professor](docs/GUIA-PROFESSOR.md) detalha a instalação nativa, a criação da conta de leitura e como diagnosticar erros de conexão ou login.
+
 ## Administração no ambiente oficial
 
 O [TRANSFER-01 — Restaurar o Supermercado em outro computador](docs/transfer-01.md) leva o estado completo do MySQL oficial (backup cifrado, testado em restauração isolada) e explica a instalação no novo computador.
@@ -95,7 +125,7 @@ npm.cmd ci
 
 O Git já contém a versão fixada do SQL oficial em `database/official/`. Este projeto não usa submódulos.
 
-Para uma **instalação limpa**, siga a seção anterior. Ela cria novos segredos locais, sobe o Compose, importa os 98 registros oficiais e permite escolher a senha de F0001 no terminal. Em seguida, inicie a API com `npm.cmd run start:official -w backend` e o React com `npm.cmd run dev:official -w frontend`.
+Para uma **instalação acadêmica**, siga [Como acessar o sistema — Credenciais acadêmicas](#como-acessar-o-sistema--credenciais-acadêmicas).
 
 Para **recuperar o estado atual**, transfira o backup cifrado e a chave por canais privados separados e siga [a restauração do backup cifrado](docs/restauracao.md#restaurar-o-backup-oficial-cifrado). A recuperação preserva os registros acrescentados durante o desenvolvimento e a credencial bcrypt de F0001. Gere novas configurações locais e reconfira `npm.cmd run check:official -w backend` e `/api/v1/ready`.
 

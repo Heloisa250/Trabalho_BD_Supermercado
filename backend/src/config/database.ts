@@ -20,8 +20,9 @@ export function createDatabase(env: DatabaseEnvironment) {
 
 export async function checkDatabase(pool: Pool | undefined, schema: string) {
   if (!pool) throw new Error('MySQL sem configuração válida.');
-  const [[row]] = await pool.query<(RowDataPacket & { schemaName: string })[]>({
-    sql: 'SELECT DATABASE() AS schemaName', timeout: 3000,
+  const [[row]] = await pool.query<(RowDataPacket & { schemaName: string; caseMode: number })[]>({
+    sql: 'SELECT DATABASE() AS schemaName, @@lower_case_table_names AS caseMode', timeout: 3000,
   });
-  if (row?.schemaName !== schema) throw new Error('Schema inesperado.');
+  const expected = row?.caseMode === 1 ? schema.toLowerCase() : schema;
+  if (row?.schemaName !== expected) throw new Error('Schema inesperado.');
 }

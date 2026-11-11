@@ -3,6 +3,13 @@ dist/
 coverage/
 
 /backups/
+/.claude/
+/logins e credenciais cripografados/
+
+.env
+.env.*
+!.env.example
+!.env.*.example
 
 *.key
 *.pem
