@@ -1,0 +1,71 @@
+@import "tailwindcss";
+
+/* Tema escuro único do sistema. color-scheme faz o navegador desenhar campos de data, selects e
+   barras de rolagem no modo escuro. */
+:root {
+  color-scheme: dark;
+}
+
+body {
+  @apply bg-slate-950 text-slate-100;
+}
+
+.dashboard-background {
+  isolation: isolate;
+}
+
+.dashboard-background::before {
+  content: "";
+  position: fixed;
+  inset: -8px;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(rgb(0 0 0 / 94%), rgb(0 0 0 / 94%)),
+    url("../assets/supermarket-aisle.png") center / cover no-repeat;
+  filter: blur(5px);
+}
+
+/* No Tailwind 4 a borda padrão usa currentColor; no tema escuro isso deixaria bordas claras demais. */
+*, ::before, ::after, ::backdrop {
+  border-color: var(--color-slate-800);
+}
+
+dialog {
+  @apply bg-slate-900 text-slate-100;
+}
+
+/* Comprovante demonstrativo: imprime só o comprovante, em papel branco com texto preto. */
+@media print {
+  :root { color-scheme: light; }
+  body { background: #fff; }
+  body * { visibility: hidden; }
+  .receipt, .receipt * { visibility: visible; color: #000 !important; background: #fff !important; border-color: #000 !important; }
+  .receipt { position: absolute; inset: 0 auto auto 0; border: 0; }
+  .no-print { display: none; }
+}
+
+/* Título manuscrito do login (HandwrittenTitle): traço desenhado + varredura da esquerda para a direita + preenchimento. */
+.handwritten-text {
+  fill: transparent;
+  stroke: #fff;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 900;
+  stroke-dashoffset: 900;
+  animation: handwritten-stroke 2.6s cubic-bezier(.45, .05, .35, 1) .2s forwards,
+             handwritten-fill .7s ease-out 2.4s forwards;
+}
+.handwritten-sweep {
+  transform: scaleX(0);
+  transform-origin: left center;
+  transform-box: fill-box;
+  animation: handwritten-sweep 2.4s cubic-bezier(.45, .05, .35, 1) .2s forwards;
+}
+@keyframes handwritten-stroke { to { stroke-dashoffset: 0; } }
+@keyframes handwritten-fill { to { fill: #fff; stroke-width: 0; } }
+@keyframes handwritten-sweep { to { transform: scaleX(1); } }
+@media (prefers-reduced-motion: reduce) {
+  .handwritten-text { animation: none; fill: #fff; stroke-width: 0; stroke-dashoffset: 0; }
+  .handwritten-sweep { animation: none; transform: none; }
+}

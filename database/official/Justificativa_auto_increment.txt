@@ -1,0 +1,20 @@
+
+Utilizem ou não essas justificativas na documentação, se quiserem mudar alguma coisa fiquem a vontade, contanto que que não fujam da ideia de cada justificativa. 😙
+
+Critérios utilizado para o auto_increment:
+
+O auto_increment foi utilizado apenas em tabelas de cadastro de apoio. São tabelas com poucos registros, que mudam raramente e cujo ID serve só para ligar um registro a outro dentro do banco (chave primária e chaves estrangeiras). Nelas, o ID não tem significado para o negócio, não aparece em nota fiscal, relatório financeiro ou registro de auditoria e não segue nenhuma regra de formação. Nesses casos, deixar o próprio banco gerar o número sequencial é mais simples e evita IDs repetidos por erro de digitação. Também não traz risco ao sistema, pois uma falha na sequência (por exemplo, pular do 3 para o 5 depois de uma exclusão) não causa nenhum problema.
+
+Justificativa de cada um:
+
+Tabela Cargo: Guarda poucos perfis de função, como operador de caixa, supervisor e gerente, e a lista muda raramente. O ID serve apenas para o funcionário apontar para o seu cargo. O que importa para o sistema é o nome do cargo e a permissão de cancelar item, e não o número do ID. Por isso, não existe regra de negócio na criação desse número.
+
+Tabela forma_pagamento: Reúne poucas formas de pagamento fixas, como dinheiro, cartão de débito, cartão de crédito, Pix e vale-alimentação. O ID serve apenas para ligar o pagamento à forma utilizada. Esse número não aparece na nota fiscal e não possui regra de formação, pois o que identifica a forma de pagamento é a sua descrição.
+
+Tabela marca: Cadastro auxiliar que apoia o cadastro de produtos. O ID serve apenas para ligar o produto à sua marca e não identifica nada fora do banco de dados. Uma falha na sequência não afeta nenhuma operação do sistema.
+
+Tabela categoria: Cadastro auxiliar organizado em níveis (categoria e subcategoria). O ID serve apenas para ligar uma categoria à sua categoria pai e o produto à sua categoria. Não existe nenhuma regra de negócio sobre o valor desse número.
+
+Tabela caixa:  Representa os pontos de pagamento do supermercado, ou seja, os caixas onde as vendas são registradas (Caixa 01, Caixa 02 etc.). A identificação real de cada caixa para os operadores é o campo numero, que é único (unique) e não se repete. O ID é apenas um identificador técnico interno, usado para ligar o caixa às sessões de caixa.
+
+OBS: pedi pra ia melhorar a minha escrita, pra deixar mais fácil e direto de entender (eu nao sabia explicar de uma forma que ficasse boa pra colocar na documentação 😞, mas podem mudar se quiser, mas são essas as justificativas do auto_increment)

@@ -1,0 +1,575 @@
+{
+  "mysql": "8.4.13",
+  "origem": "DML oficial 4bb569c",
+  "planos": [
+    {
+      "query_block": {
+        "select_id": 1,
+        "cost_info": {
+          "query_cost": "0.75"
+        },
+        "table": {
+          "table_name": "venda",
+          "access_type": "ALL",
+          "rows_examined_per_scan": 5,
+          "rows_produced_per_join": 1,
+          "filtered": "20.00",
+          "cost_info": {
+            "read_cost": "0.65",
+            "eval_cost": "0.10",
+            "prefix_cost": "0.75",
+            "data_read_per_join": "24"
+          },
+          "used_columns": [
+            "data_hora",
+            "valor_total",
+            "status"
+          ],
+          "attached_condition": "((`supermercado`.`venda`.`status` = 'FINALIZADA') and (`supermercado`.`venda`.`data_hora` >= TIMESTAMP'2026-11-03 00:00:00') and (`supermercado`.`venda`.`data_hora` < TIMESTAMP'2026-11-05 00:00:00'))"
+        }
+      }
+    },
+    {
+      "query_block": {
+        "select_id": 1,
+        "cost_info": {
+          "query_cost": "0.75"
+        },
+        "table": {
+          "table_name": "lote",
+          "access_type": "ALL",
+          "rows_examined_per_scan": 5,
+          "rows_produced_per_join": 1,
+          "filtered": "33.33",
+          "cost_info": {
+            "read_cost": "0.58",
+            "eval_cost": "0.17",
+            "prefix_cost": "0.75",
+            "data_read_per_join": "279"
+          },
+          "used_columns": [
+            "id_lote",
+            "id_produto",
+            "data_validade",
+            "quantidade_atual"
+          ],
+          "attached_condition": "((`supermercado`.`lote`.`quantidade_atual` > 0.000) and ((case when (`supermercado`.`lote`.`data_validade` < DATE'2026-11-06') then 'VENCIDO' when (`supermercado`.`lote`.`data_validade` <= DATE'2026-12-06') then 'PROXIMO' when (`supermercado`.`lote`.`data_validade` is null) then 'SEM_VALIDADE' end) is not null))"
+        }
+      }
+    },
+    {
+      "query_block": {
+        "select_id": 1,
+        "cost_info": {
+          "query_cost": "0.98"
+        },
+        "grouping_operation": {
+          "using_temporary_table": true,
+          "using_filesort": false,
+          "nested_loop": [
+            {
+              "table": {
+                "table_name": "pc",
+                "access_type": "ref",
+                "possible_keys": [
+                  "fk_pedido_compra_fornecedor"
+                ],
+                "key": "fk_pedido_compra_fornecedor",
+                "used_key_parts": [
+                  "id_fornecedor"
+                ],
+                "key_length": "4",
+                "ref": [
+                  "const"
+                ],
+                "rows_examined_per_scan": 2,
+                "rows_produced_per_join": 0,
+                "filtered": "20.00",
+                "cost_info": {
+                  "read_cost": "0.50",
+                  "eval_cost": "0.04",
+                  "prefix_cost": "0.70",
+                  "data_read_per_join": "422"
+                },
+                "used_columns": [
+                  "id_pedido",
+                  "id_fornecedor",
+                  "data_pedido",
+                  "status"
+                ],
+                "attached_condition": "((`supermercado`.`pc`.`data_pedido` >= TIMESTAMP'2026-10-20 00:00:00') and (`supermercado`.`pc`.`data_pedido` < TIMESTAMP'2026-11-10 00:00:00'))"
+              }
+            },
+            {
+              "table": {
+                "table_name": "t",
+                "access_type": "ref",
+                "possible_keys": [
+                  "<auto_key0>"
+                ],
+                "key": "<auto_key0>",
+                "used_key_parts": [
+                  "id_pedido"
+                ],
+                "key_length": "4",
+                "ref": [
+                  "supermercado.pc.id_pedido"
+                ],
+                "rows_examined_per_scan": 2,
+                "rows_produced_per_join": 0,
+                "filtered": "100.00",
+                "cost_info": {
+                  "read_cost": "0.20",
+                  "eval_cost": "0.08",
+                  "prefix_cost": "0.98",
+                  "data_read_per_join": "25"
+                },
+                "used_columns": [
+                  "id_pedido",
+                  "valor"
+                ],
+                "materialized_from_subquery": {
+                  "using_temporary_table": true,
+                  "dependent": false,
+                  "cacheable": true,
+                  "query_block": {
+                    "select_id": 2,
+                    "cost_info": {
+                      "query_cost": "0.75"
+                    },
+                    "grouping_operation": {
+                      "using_filesort": false,
+                      "table": {
+                        "table_name": "item_pedido_compra",
+                        "access_type": "index",
+                        "possible_keys": [
+                          "PRIMARY",
+                          "fk_item_pedido_compra_produto"
+                        ],
+                        "key": "PRIMARY",
+                        "used_key_parts": [
+                          "id_pedido",
+                          "id_produto"
+                        ],
+                        "key_length": "8",
+                        "rows_examined_per_scan": 5,
+                        "rows_produced_per_join": 5,
+                        "filtered": "100.00",
+                        "cost_info": {
+                          "read_cost": "0.25",
+                          "eval_cost": "0.50",
+                          "prefix_cost": "0.75",
+                          "data_read_per_join": "120"
+                        },
+                        "used_columns": [
+                          "id_pedido",
+                          "id_produto",
+                          "quantidade",
+                          "custo_unitario"
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "query_block": {
+        "select_id": 1,
+        "cost_info": {
+          "query_cost": "3.43"
+        },
+        "ordering_operation": {
+          "using_filesort": true,
+          "cost_info": {
+            "sort_cost": "1.22"
+          },
+          "nested_loop": [
+            {
+              "table": {
+                "table_name": "m",
+                "access_type": "ALL",
+                "possible_keys": [
+                  "fk_movimentacao_estoque_lote"
+                ],
+                "rows_examined_per_scan": 11,
+                "rows_produced_per_join": 1,
+                "filtered": "11.11",
+                "cost_info": {
+                  "read_cost": "1.23",
+                  "eval_cost": "0.12",
+                  "prefix_cost": "1.35",
+                  "data_read_per_join": "1K"
+                },
+                "used_columns": [
+                  "id_movimentacao",
+                  "id_lote",
+                  "tipo",
+                  "data_hora"
+                ],
+                "attached_condition": "((`supermercado`.`m`.`data_hora` >= TIMESTAMP'2026-11-03 00:00:00') and (`supermercado`.`m`.`data_hora` < TIMESTAMP'2026-11-05 00:00:00'))"
+              }
+            },
+            {
+              "table": {
+                "table_name": "l",
+                "access_type": "eq_ref",
+                "possible_keys": [
+                  "PRIMARY",
+                  "uq_lote_produto_codigo"
+                ],
+                "key": "PRIMARY",
+                "used_key_parts": [
+                  "id_lote"
+                ],
+                "key_length": "4",
+                "ref": [
+                  "supermercado.m.id_lote"
+                ],
+                "rows_examined_per_scan": 1,
+                "rows_produced_per_join": 1,
+                "filtered": "100.00",
+                "cost_info": {
+                  "read_cost": "0.31",
+                  "eval_cost": "0.12",
+                  "prefix_cost": "1.78",
+                  "data_read_per_join": "205"
+                },
+                "used_columns": [
+                  "id_lote",
+                  "id_produto",
+                  "codigo_lote"
+                ]
+              }
+            },
+            {
+              "table": {
+                "table_name": "p",
+                "access_type": "eq_ref",
+                "possible_keys": [
+                  "PRIMARY"
+                ],
+                "key": "PRIMARY",
+                "used_key_parts": [
+                  "id_produto"
+                ],
+                "key_length": "4",
+                "ref": [
+                  "supermercado.l.id_produto"
+                ],
+                "rows_examined_per_scan": 1,
+                "rows_produced_per_join": 1,
+                "filtered": "100.00",
+                "cost_info": {
+                  "read_cost": "0.31",
+                  "eval_cost": "0.12",
+                  "prefix_cost": "2.21",
+                  "data_read_per_join": "1K"
+                },
+                "used_columns": [
+                  "id_produto",
+                  "nome"
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "query_block": {
+        "select_id": 1,
+        "cost_info": {
+          "query_cost": "1.61"
+        },
+        "table": {
+          "table_name": "venda",
+          "access_type": "range",
+          "possible_keys": [
+            "ix_venda_status_data"
+          ],
+          "key": "ix_venda_status_data",
+          "used_key_parts": [
+            "status",
+            "data_hora"
+          ],
+          "key_length": "6",
+          "rows_examined_per_scan": 3,
+          "rows_produced_per_join": 3,
+          "filtered": "100.00",
+          "index_condition": "((`supermercado`.`venda`.`status` = 'FINALIZADA') and (`supermercado`.`venda`.`data_hora` >= TIMESTAMP'2026-11-03 00:00:00') and (`supermercado`.`venda`.`data_hora` < TIMESTAMP'2026-11-05 00:00:00'))",
+          "cost_info": {
+            "read_cost": "1.31",
+            "eval_cost": "0.30",
+            "prefix_cost": "1.61",
+            "data_read_per_join": "72"
+          },
+          "used_columns": [
+            "data_hora",
+            "valor_total",
+            "status"
+          ]
+        }
+      }
+    },
+    {
+      "query_block": {
+        "select_id": 1,
+        "cost_info": {
+          "query_cost": "0.75"
+        },
+        "table": {
+          "table_name": "lote",
+          "access_type": "ALL",
+          "rows_examined_per_scan": 5,
+          "rows_produced_per_join": 1,
+          "filtered": "33.33",
+          "cost_info": {
+            "read_cost": "0.58",
+            "eval_cost": "0.17",
+            "prefix_cost": "0.75",
+            "data_read_per_join": "279"
+          },
+          "used_columns": [
+            "id_lote",
+            "id_produto",
+            "data_validade",
+            "quantidade_atual"
+          ],
+          "attached_condition": "((`supermercado`.`lote`.`quantidade_atual` > 0.000) and ((case when (`supermercado`.`lote`.`data_validade` < DATE'2026-11-06') then 'VENCIDO' when (`supermercado`.`lote`.`data_validade` <= DATE'2026-12-06') then 'PROXIMO' when (`supermercado`.`lote`.`data_validade` is null) then 'SEM_VALIDADE' end) is not null))"
+        }
+      }
+    },
+    {
+      "query_block": {
+        "select_id": 1,
+        "cost_info": {
+          "query_cost": "0.98"
+        },
+        "grouping_operation": {
+          "using_temporary_table": true,
+          "using_filesort": false,
+          "nested_loop": [
+            {
+              "table": {
+                "table_name": "pc",
+                "access_type": "ref",
+                "possible_keys": [
+                  "fk_pedido_compra_fornecedor"
+                ],
+                "key": "fk_pedido_compra_fornecedor",
+                "used_key_parts": [
+                  "id_fornecedor"
+                ],
+                "key_length": "4",
+                "ref": [
+                  "const"
+                ],
+                "rows_examined_per_scan": 2,
+                "rows_produced_per_join": 0,
+                "filtered": "20.00",
+                "cost_info": {
+                  "read_cost": "0.50",
+                  "eval_cost": "0.04",
+                  "prefix_cost": "0.70",
+                  "data_read_per_join": "422"
+                },
+                "used_columns": [
+                  "id_pedido",
+                  "id_fornecedor",
+                  "data_pedido",
+                  "status"
+                ],
+                "attached_condition": "((`supermercado`.`pc`.`data_pedido` >= TIMESTAMP'2026-10-20 00:00:00') and (`supermercado`.`pc`.`data_pedido` < TIMESTAMP'2026-11-10 00:00:00'))"
+              }
+            },
+            {
+              "table": {
+                "table_name": "t",
+                "access_type": "ref",
+                "possible_keys": [
+                  "<auto_key0>"
+                ],
+                "key": "<auto_key0>",
+                "used_key_parts": [
+                  "id_pedido"
+                ],
+                "key_length": "4",
+                "ref": [
+                  "supermercado.pc.id_pedido"
+                ],
+                "rows_examined_per_scan": 2,
+                "rows_produced_per_join": 0,
+                "filtered": "100.00",
+                "cost_info": {
+                  "read_cost": "0.20",
+                  "eval_cost": "0.08",
+                  "prefix_cost": "0.98",
+                  "data_read_per_join": "25"
+                },
+                "used_columns": [
+                  "id_pedido",
+                  "valor"
+                ],
+                "materialized_from_subquery": {
+                  "using_temporary_table": true,
+                  "dependent": false,
+                  "cacheable": true,
+                  "query_block": {
+                    "select_id": 2,
+                    "cost_info": {
+                      "query_cost": "0.75"
+                    },
+                    "grouping_operation": {
+                      "using_filesort": false,
+                      "table": {
+                        "table_name": "item_pedido_compra",
+                        "access_type": "index",
+                        "possible_keys": [
+                          "PRIMARY",
+                          "fk_item_pedido_compra_produto"
+                        ],
+                        "key": "PRIMARY",
+                        "used_key_parts": [
+                          "id_pedido",
+                          "id_produto"
+                        ],
+                        "key_length": "8",
+                        "rows_examined_per_scan": 5,
+                        "rows_produced_per_join": 5,
+                        "filtered": "100.00",
+                        "cost_info": {
+                          "read_cost": "0.25",
+                          "eval_cost": "0.50",
+                          "prefix_cost": "0.75",
+                          "data_read_per_join": "120"
+                        },
+                        "used_columns": [
+                          "id_pedido",
+                          "id_produto",
+                          "quantidade",
+                          "custo_unitario"
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "query_block": {
+        "select_id": 1,
+        "cost_info": {
+          "query_cost": "7.16"
+        },
+        "ordering_operation": {
+          "using_filesort": false,
+          "nested_loop": [
+            {
+              "table": {
+                "table_name": "m",
+                "access_type": "range",
+                "possible_keys": [
+                  "fk_movimentacao_estoque_lote",
+                  "ix_movimentacao_data"
+                ],
+                "key": "ix_movimentacao_data",
+                "used_key_parts": [
+                  "data_hora"
+                ],
+                "key_length": "5",
+                "rows_examined_per_scan": 6,
+                "rows_produced_per_join": 6,
+                "filtered": "100.00",
+                "index_condition": "((`supermercado`.`m`.`data_hora` >= TIMESTAMP'2026-11-03 00:00:00') and (`supermercado`.`m`.`data_hora` < TIMESTAMP'2026-11-05 00:00:00'))",
+                "backward_index_scan": true,
+                "cost_info": {
+                  "read_cost": "2.36",
+                  "eval_cost": "0.60",
+                  "prefix_cost": "2.96",
+                  "data_read_per_join": "6K"
+                },
+                "used_columns": [
+                  "id_movimentacao",
+                  "id_lote",
+                  "tipo",
+                  "data_hora"
+                ]
+              }
+            },
+            {
+              "table": {
+                "table_name": "l",
+                "access_type": "eq_ref",
+                "possible_keys": [
+                  "PRIMARY",
+                  "uq_lote_produto_codigo"
+                ],
+                "key": "PRIMARY",
+                "used_key_parts": [
+                  "id_lote"
+                ],
+                "key_length": "4",
+                "ref": [
+                  "supermercado.m.id_lote"
+                ],
+                "rows_examined_per_scan": 1,
+                "rows_produced_per_join": 6,
+                "filtered": "100.00",
+                "cost_info": {
+                  "read_cost": "1.50",
+                  "eval_cost": "0.60",
+                  "prefix_cost": "5.06",
+                  "data_read_per_join": "1008"
+                },
+                "used_columns": [
+                  "id_lote",
+                  "id_produto",
+                  "codigo_lote"
+                ]
+              }
+            },
+            {
+              "table": {
+                "table_name": "p",
+                "access_type": "eq_ref",
+                "possible_keys": [
+                  "PRIMARY"
+                ],
+                "key": "PRIMARY",
+                "used_key_parts": [
+                  "id_produto"
+                ],
+                "key_length": "4",
+                "ref": [
+                  "supermercado.l.id_produto"
+                ],
+                "rows_examined_per_scan": 1,
+                "rows_produced_per_join": 6,
+                "filtered": "100.00",
+                "cost_info": {
+                  "read_cost": "1.50",
+                  "eval_cost": "0.60",
+                  "prefix_cost": "7.16",
+                  "data_read_per_join": "9K"
+                },
+                "used_columns": [
+                  "id_produto",
+                  "nome"
+                ]
+              }
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "name": "supermercado-qualidade-lider",
+  "private": true,
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "concurrently -k \"npm run dev -w backend\" \"npm run dev -w frontend\"",
+    "build": "npm run build --workspaces",
+    "test": "npm test -w backend && npm test -w frontend",
+    "demo:setup": "node scripts/demo-setup.mjs",
+    "demo:verify": "node scripts/demo-setup.mjs --verify",
+    "demo:start": "concurrently -k -n API,React \"npm run dev -w backend -- --official\" \"npm run dev:official -w frontend\"",
+    "db:official:init": "node database/provisioning/initialize-official.mjs",
+    "start": "npm start -w backend"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.0",
+    "typescript": "~5.9.3",
+    "@types/node": "^22.15.0"
+  }
+}

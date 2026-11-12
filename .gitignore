@@ -1,0 +1,18 @@
+node_modules/
+dist/
+coverage/
+
+/backups/
+/.claude/
+/logins e credenciais cripografados/
+
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+*.key
+*.pem
+*.pfx
+*.p12
+*.sql.enc
